@@ -25,8 +25,15 @@ const PUBLIC_PATHS = [
   // hitting the login wall first.
   '/navigate',
   '/contribute',
+  // Terms of Use / Privacy Notice — linked from the Sign up form, so they
+  // must open for a visitor who doesn't have an account yet.
+  '/terms',
+  '/privacy',
   '/api/chat',
   '/api/wiki-pathways',
+  // Called server-to-server by Supabase Auth (no session); authenticated by
+  // its webhook signature inside the route instead.
+  '/api/auth/send-email',
 ];
 
 export async function proxy(request: NextRequest) {
