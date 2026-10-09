@@ -22,6 +22,10 @@ import { parseGridUpdate } from '@/lib/grid-update';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+// A long pathway-draft can stream for a few minutes; without this the
+// platform's default function timeout can kill the stream mid-document.
+export const maxDuration = 300;
+
 const MODES = [
   'companion',
   'analysis-doc',
@@ -192,8 +196,11 @@ export async function POST(req: Request) {
     // mid-document — the closing </deliverable> tag never arrives, so the
     // client can't extract it and falls back to showing raw text. 8192
     // comfortably covers a full report; ordinary short replies are
-    // unaffected since this is a ceiling, not a target.
-    max_tokens: mode === 'companion' ? 8192 : mode === 'extract-insights' ? 1024 : mode === 'pathway-draft' ? 9000 : 4096,
+    // unaffected since this is a ceiling, not a target. pathway-draft gets
+    // far more: corpus pathway documents run ~5-11k tokens on their own, and
+    // a merge into an already-published pathway re-emits that whole document
+    // plus new units — 9000 was cutting drafts off mid-document.
+    max_tokens: mode === 'companion' ? 8192 : mode === 'extract-insights' ? 1024 : mode === 'pathway-draft' ? 32000 : 4096,
     system: systemPrompt,
     messages,
   });
