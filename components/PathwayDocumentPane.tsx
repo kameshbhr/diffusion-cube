@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import WikiMarkdown from '@/components/WikiMarkdown';
+import ToolkitAssetStatusList from '@/components/ToolkitAssetStatusList';
 import PathwayFrontmatterBlock from '@/components/PathwayFrontmatterBlock';
+import Select from '@/components/Select';
 import type { VersionOption } from '@/components/AdoptionPlanModal';
 import { downloadPlanAsPdf } from '@/lib/adoption-plan-pdf';
 import { stripFrontmatter, parseFrontmatter } from '@/lib/strip-frontmatter';
@@ -12,7 +14,10 @@ interface Props {
   loading: boolean;
   error: string | null;
   onClose: () => void;
-  onPublish: (commitMessage: string) => Promise<{ ok: boolean; slug?: string; error?: string }>;
+  // Send for Review: asks "may this be published?" on a card in the chat
+  // (useAdoptionConversation's requestPublishConsent) — the pathway is sent
+  // only once the contributor confirms there.
+  onPublish: () => Promise<{ ok: boolean; error?: string }>;
   status: 'draft' | 'awaiting' | 'published';
   versions: VersionOption[];
   selectedVersionNumber: number | null;
@@ -21,6 +26,11 @@ interface Props {
   onSelectVersion: (versionNumber: number) => void;
   // Optional name used as the PDF filename prefix.
   deploymentName?: string;
+  // The pathway this workspace contributes to — its toolkit assets are
+  // tracked (not listed: Section 4 shows them) so Send for Review is offered
+  // again when new ones haven't been sent. refreshKey re-fetches.
+  pathwayId?: string;
+  toolkitAssetsRefreshKey?: number;
 }
 
 // A persistent side panel next to the chat — read-only preview, a version
@@ -42,13 +52,24 @@ export default function PathwayDocumentPane({
   publishedVersionNumber,
   onSelectVersion,
   deploymentName,
+  pathwayId,
+  toolkitAssetsRefreshKey = 0,
 }: Props) {
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
+  const [askedInChat, setAskedInChat] = useState(false);
+  // Toolkit assets shared since the last Send for Review — offering the
+  // button again lets them reach the admin without a text change.
+  const [unsentAssets, setUnsentAssets] = useState(0);
+  const handleUnsentCount = useCallback((count: number) => setUnsentAssets(count), []);
+  const canSend = status === 'draft' || unsentAssets > 0;
   const fm = markdown ? parseFrontmatter(markdown) : null;
 
   function handleDownloadPdf() {
-    const safeName = (deploymentName || 'pathway').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+    // Edge hyphens trimmed so a name ending in punctuation ("Kisan Voice!")
+    // doesn't give a double hyphen before the suffix.
+    const safeName =
+      (deploymentName || '').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'pathway';
     downloadPlanAsPdf(markdown, `${safeName}-pathway.pdf`);
   }
 
@@ -56,8 +77,9 @@ export default function PathwayDocumentPane({
     setPublishing(true);
     setPublishError(null);
     try {
-      const result = await onPublish('Update pathway page');
+      const result = await onPublish();
       if (!result.ok) setPublishError(result.error || 'Could not publish. Try again.');
+      else setAskedInChat(true);
     } finally {
       setPublishing(false);
     }
@@ -74,24 +96,24 @@ export default function PathwayDocumentPane({
         </div>
         <div className="flex flex-shrink-0 items-center gap-2">
           {versions.length > 0 && (
-            <select
-              value={selectedVersionNumber ?? latestVersionNumber}
-              onChange={(e) => onSelectVersion(Number(e.target.value))}
-              className="rounded-lg border border-navy/15 bg-white px-2 py-1.5 text-xs text-ink"
+            <Select
+              value={String(selectedVersionNumber ?? latestVersionNumber)}
+              onChange={(v) => onSelectVersion(Number(v))}
               aria-label="Select version"
-            >
-              {versions.map((v) => (
-                <option key={v.version_number} value={v.version_number}>
-                  v0.{v.version_number}
-                  {v.version_number === latestVersionNumber
+              align="right"
+              menuClassName="text-xs"
+              className="rounded-lg border border-navy/15 px-2 py-1.5 text-xs text-ink"
+              options={versions.map((v) => ({
+                value: String(v.version_number),
+                label: `v0.${v.version_number}${
+                  v.version_number === latestVersionNumber
                     ? ' (latest)'
                     : v.version_number === publishedVersionNumber
                       ? ' (published)'
-                      : ''}{' '}
-                  — {new Date(v.created_at).toLocaleString()}
-                </option>
-              ))}
-            </select>
+                      : ''
+                } — ${new Date(v.created_at).toLocaleString()}`,
+              }))}
+            />
           )}
           <button onClick={onClose} aria-label="Close" className="px-1 text-lg leading-none text-ink-soft transition hover:text-navy">
             ×
@@ -108,14 +130,29 @@ export default function PathwayDocumentPane({
             <WikiMarkdown markdown={stripFrontmatter(markdown)} />
           </>
         )}
+        {pathwayId && (
+          <ToolkitAssetStatusList
+            pathwayId={pathwayId}
+            refreshKey={toolkitAssetsRefreshKey}
+            onUnsentCountChange={handleUnsentCount}
+            countOnly
+          />
+        )}
       </div>
 
       {!error && markdown && (
         <div className="flex flex-shrink-0 items-center justify-end gap-2 border-t border-navy/10 p-3">
           {publishError && <p className="mr-auto text-xs text-coral">{publishError}</p>}
+          {!publishError && askedInChat && status === 'draft' && (
+            <p className="mr-auto text-xs text-ink-soft">Please confirm in the chat to send it.</p>
+          )}
           {selectedVersionNumber !== null && selectedVersionNumber !== latestVersionNumber ? (
             <p className="mr-auto text-xs text-ink-soft">
               Viewing v0.{selectedVersionNumber} — publishing always uses the latest version.
+            </p>
+          ) : status !== 'draft' && unsentAssets > 0 ? (
+            <p className="mr-auto text-xs text-ink-soft">
+              {unsentAssets} new toolkit asset{unsentAssets === 1 ? '' : 's'} not yet sent for review.
             </p>
           ) : null}
           <button
@@ -125,7 +162,7 @@ export default function PathwayDocumentPane({
           >
             Download PDF
           </button>
-          {status === 'draft' && (selectedVersionNumber === null || selectedVersionNumber === latestVersionNumber) && (
+          {canSend && (selectedVersionNumber === null || selectedVersionNumber === latestVersionNumber) && (
             <button
               onClick={handlePublish}
               disabled={publishing || loading}

@@ -1,20 +1,12 @@
 import type { CellState } from '@/lib/dimensions';
 import type { ExplorerIntent } from '@/lib/explorer-intents';
-
-// Step 5 (Generate Output) wraps the Deep Dive Report / Holistic Adoption
-// Plan's full markdown in this tag pair — shared between ChatPanel (renders
-// a Download PDF card in place of it) and adoption-conversation.ts (which
-// stops live-streaming the message body the moment this tag appears, so the
-// document reveals as a finished whole rather than typing itself out).
-export const DELIVERABLE_START = '<deliverable>';
-export const DELIVERABLE_END = '</deliverable>';
+import { isAssetId, type ToolkitAssetCandidate, type ToolkitAssetMention } from '@/lib/toolkit-assets';
 
 // Marks where a client-constructed (not model-authored) Contributor-flow
 // chat message should render a card that reopens the current pathway
 // document — see lib/adoption-conversation.ts's pathwayAction handling and
-// components/ChatPanel.tsx's rendering of it. Unlike DELIVERABLE_START/END,
-// this wraps no content — the card fetches the document from
-// pathway_submission_versions when opened, so nothing needs storing twice.
+// components/ChatPanel.tsx's rendering of it. It wraps no content — the card fetches the document from
+// design_documents (doc_type='draft') when opened, so nothing needs storing twice.
 export const PATHWAY_DOC_MARKER = '<pathway_doc/>';
 
 // The Explorer equivalents: markers in a client-constructed chat message that
@@ -24,6 +16,20 @@ export const PATHWAY_DOC_MARKER = '<pathway_doc/>';
 // `design_documents`, never stored twice.
 export const ANALYSIS_DOC_MARKER = '<analysis_doc/>';
 export const EXEC_SUMMARY_MARKER = '<exec_summary/>';
+
+// Contributor flow: marks a client-constructed message that renders the
+// toolkit-asset public-sharing consent card. Like the markers above it wraps
+// no content — the card's data travels on the message itself
+// (Message.toolkitAssetConsent), see lib/adoption-conversation.ts.
+export const TOOLKIT_ASSET_CONSENT_MARKER = '<toolkit_asset_consent/>';
+
+// Contributor flow: the resource review card (Message.resourceReview) and
+// the "may this be published?" card (Message.publishConsent). Client-
+// constructed like the markers above — the card data travels on the message.
+export const RESOURCE_REVIEW_MARKER = '<resource_review/>';
+// Contributor: the asset card under the draft (Message.assetShare).
+export const ASSET_SHARE_MARKER = '<asset_share/>';
+export const PUBLISH_CONSENT_MARKER = '<publish_consent/>';
 
 // Split out from lib/adoption-conversation.ts so it can be imported from
 // server code (app/api/chat/route.ts) without pulling in that file's React
@@ -90,6 +96,109 @@ export interface ParsedGridUpdate {
   explorerAction?: {
     type: 'none' | 'analysis' | 'executive-summary';
   };
+  // Contributor-only: uploaded files / pasted https links from this turn the
+  // model judged to be genuine Toolkit Assets (see contributorSystemPrompt's
+  // "Toolkit asset files" section). Only a proposal — the client asks the
+  // contributor for public-sharing consent before anything is stored.
+  toolkitAssetCandidates?: ToolkitAssetCandidate[];
+  // Contributor-only: reusable artifacts the material shared this turn names
+  // but didn't attach (see ToolkitAssetMention) — each becomes an item on the
+  // resource review card.
+  toolkitAssetMentions?: ToolkitAssetMention[];
+  // Explorer-only: ids of published toolkit assets the companion offered this
+  // turn — the client validates them against GET /api/toolkit-assets and
+  // renders download cards (see explorerSystemPrompt).
+  toolkitAssetsReferenced?: string[];
+}
+
+function str(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+// Drops anything malformed rather than failing the whole block: an entry
+// needs a name and either an uploaded file name or an https URL. Lenient
+// about shape — the model sometimes writes `source` as a bare string, or the
+// url/fileName at the entry's top level, or leaves a trailing quote or
+// punctuation on a URL — since silently dropping a real candidate means the
+// contributor never sees its consent card.
+function parseToolkitAssetCandidates(value: unknown): ToolkitAssetCandidate[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const out: ToolkitAssetCandidate[] = [];
+  for (const raw of value) {
+    if (!raw || typeof raw !== 'object') continue;
+    const entry = raw as Record<string, unknown>;
+    let fileName = '';
+    let url = '';
+    if (typeof entry.source === 'string') {
+      if (/^https?:\/\//i.test(entry.source.trim())) url = entry.source.trim();
+      else fileName = entry.source.trim();
+    } else if (entry.source && typeof entry.source === 'object') {
+      const source = entry.source as Record<string, unknown>;
+      fileName = str(source.fileName ?? source.filename ?? source.file);
+      url = str(source.url ?? source.link ?? source.href);
+    }
+    fileName = fileName || str(entry.fileName ?? entry.filename);
+    url = (url || str(entry.url ?? entry.link)).replace(/["'`.,;)\]]+$/, '');
+    const name = str(entry.name);
+    if (!name || (!fileName && !/^https:\/\/\S+$/.test(url))) continue;
+    out.push({
+      source: fileName ? { fileName } : { url },
+      name,
+      purpose: str(entry.purpose),
+      reuseCondition: str(entry.reuseCondition),
+      dimension: str(entry.dimension).toLowerCase(),
+      stage: str(entry.stage).toLowerCase(),
+      sensitiveNote: str(entry.sensitiveNote ?? entry.sensitiveData).slice(0, 500),
+    });
+  }
+  return out;
+}
+
+// Lenient like parseToolkitAssetCandidates: a bare string is taken as the
+// name. Capped, since these turn into one chat question.
+function parseToolkitAssetMentions(value: unknown): ToolkitAssetMention[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const out: ToolkitAssetMention[] = [];
+  for (const raw of value) {
+    let name = '';
+    let mentionedIn = '';
+    if (typeof raw === 'string') {
+      name = raw.trim();
+    } else if (raw && typeof raw === 'object') {
+      const entry = raw as Record<string, unknown>;
+      name = str(entry.name);
+      mentionedIn = str(entry.mentionedIn ?? entry.source ?? entry.fileName);
+    }
+    if (name && name.length <= 150) out.push({ name, mentionedIn: mentionedIn.slice(0, 200) });
+  }
+  return out.slice(0, 10);
+}
+
+function stringArray(value: unknown): string[] | undefined {
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : undefined;
+}
+
+// meta is carried forward and rendered back into every later prompt, so the
+// parts those prompts iterate over are kept only in the shape they expect —
+// one malformed reply must not break every turn after it.
+function parseMeta(value: unknown): ParsedGridUpdate['meta'] {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const meta: Record<string, unknown> = { ...value };
+  const assessment = meta.cubeAssessment;
+  if (assessment !== undefined) {
+    if (!assessment || typeof assessment !== 'object' || Array.isArray(assessment)) {
+      delete meta.cubeAssessment;
+    } else {
+      const a = assessment as Record<string, unknown>;
+      meta.cubeAssessment = {
+        ...a,
+        coveredDimensions: stringArray(a.coveredDimensions),
+        partialDimensions: stringArray(a.partialDimensions),
+        missingDimensions: stringArray(a.missingDimensions),
+      };
+    }
+  }
+  return meta as ParsedGridUpdate['meta'];
 }
 
 export function parseGridUpdate(text: string): ParsedGridUpdate | null {
@@ -99,11 +208,16 @@ export function parseGridUpdate(text: string): ParsedGridUpdate | null {
     const parsed = JSON.parse(match[1]);
     return {
       cells: parsed.cells ?? {},
-      meta: parsed.meta,
+      meta: parseMeta(parsed.meta),
       pathwaysReferenced: parsed.pathwaysReferenced,
       flowStep: typeof parsed.flowStep === 'number' ? parsed.flowStep : undefined,
       pathwayAction: parsed.pathwayAction,
       explorerAction: parsed.explorerAction,
+      toolkitAssetCandidates: parseToolkitAssetCandidates(parsed.toolkitAssetCandidates),
+      toolkitAssetMentions: parseToolkitAssetMentions(parsed.toolkitAssetMentions),
+      toolkitAssetsReferenced: Array.isArray(parsed.toolkitAssetsReferenced)
+        ? [...new Set<string>(parsed.toolkitAssetsReferenced.filter(isAssetId))]
+        : undefined,
     };
   } catch {
     return null;

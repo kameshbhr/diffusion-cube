@@ -1,15 +1,27 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { downloadPlanAsPdf } from '@/lib/adoption-plan-pdf';
 import {
   ANALYSIS_DOC_MARKER,
-  DELIVERABLE_START,
-  DELIVERABLE_END,
   EXEC_SUMMARY_MARKER,
   PATHWAY_DOC_MARKER,
 } from '@/lib/grid-update';
 import type { DocType } from '@/lib/design-documents';
+import { ATTACH_ACCEPT } from '@/lib/extract-text';
+import type {
+  PublishConsentState,
+  ResourceReviewState,
+  AssetShareState,
+  ToolkitAssetCandidate,
+  ToolkitAssetConsentState,
+  ToolkitAssetMention,
+} from '@/lib/toolkit-assets';
+import ToolkitAssetConsentCard from '@/components/ToolkitAssetConsentCard';
+import ResourceReviewCard from '@/components/ResourceReviewCard';
+import AssetShareCard, { type AssetShareActions } from '@/components/AssetShareCard';
+import PublishConsentCard from '@/components/PublishConsentCard';
+import ToolkitAssetCards from '@/components/ToolkitAssetCards';
+import VoiceInputButton from '@/components/VoiceInputButton';
 
 export interface Message {
   role: 'user' | 'assistant';
@@ -17,19 +29,44 @@ export interface Message {
   // Shown in the chat bubble instead of `content` — used for uploads, where
   // `content` carries the full extracted document text sent to the agent.
   displayContent?: string;
+  // Legacy (2026-10-09 to 10-12): an app-authored note sent to the model in
+  // the contributor's turn but never shown. Nothing creates these now; older
+  // conversations may still hold one.
+  hidden?: boolean;
   // Set when the message carries one or more uploaded images — `content` then
   // holds a short instruction (plus any text-attachment content) and this
   // carries the actual bytes sent to the model.
   images?: Array<{ mediaType: string; base64: string }>;
-  // Set transiently (never persisted) while a <deliverable> block is still
-  // streaming in on the server — see adoption-conversation.ts's sendMessage,
-  // which freezes the visible content and sets this instead of live-typing
-  // the document out. Shows a "Generating your document…" placeholder.
-  generatingDoc?: boolean;
   // Pathway slugs this assistant message drew on — parsed from <grid_update>
   // and stored alongside the message so source attribution chips can be
   // rendered below the bubble on reload as well as first display.
   pathwaysReferenced?: string[];
+  // Contributor flow: a client-constructed message carrying a toolkit-asset
+  // consent card (see TOOLKIT_ASSET_CONSENT_MARKER). Persisted with the
+  // conversation so the outcome survives reload.
+  toolkitAssetConsent?: ToolkitAssetConsentState;
+  // Contributor flow, on the companion's reply: files/links it judged
+  // reusable and things the material named but didn't attach (both from
+  // <grid_update>). Collected into the resource review card — kept here so
+  // the first review (shown after the questions that follow the first
+  // draft) can gather everything found earlier, across reloads.
+  toolkitAssetCandidates?: ToolkitAssetCandidate[];
+  toolkitAssetMentions?: ToolkitAssetMention[];
+  // Contributor flow: client-constructed resource review card
+  // (RESOURCE_REVIEW_MARKER) and "may this be published?" card
+  // (PUBLISH_CONSENT_MARKER).
+  resourceReview?: ResourceReviewState;
+  publishConsent?: PublishConsentState;
+  // Contributor flow (since 2026-10-12): the asset card under the draft
+  // (ASSET_SHARE_MARKER) — upload or link each Section 4 asset, then Confirm.
+  assetShare?: AssetShareState;
+  // Explorer flow: ids of published toolkit assets this assistant message
+  // offered (from <grid_update>) — rendered as download cards under it.
+  toolkitAssetsReferenced?: string[];
+  // A client-made status bubble (a failed or rejected turn: the generic
+  // message, after any partial reply). Shown, but never sent back to
+  // /api/chat as history and never saved — see toApiMessages / persist.
+  notice?: true;
 }
 
 // Legacy marker from an earlier design where the model signalled a grid
@@ -229,48 +266,6 @@ function renderChatMarkdown(text: string): React.ReactNode {
   return <div className="space-y-0">{nodes}</div>;
 }
 
-function extractDeliverable(text: string): { before: string; markdown: string; after: string } | null {
-  const startIdx = text.indexOf(DELIVERABLE_START);
-  if (startIdx === -1) return null;
-  const endIdx = text.indexOf(DELIVERABLE_END, startIdx);
-  if (endIdx === -1) return null;
-  return {
-    before: text.slice(0, startIdx).trim(),
-    markdown: text.slice(startIdx + DELIVERABLE_START.length, endIdx).trim(),
-    after: text.slice(endIdx + DELIVERABLE_END.length).trim(),
-  };
-}
-
-function deliverableTitle(markdown: string): string {
-  return markdown.match(/^##\s+(.+)$/m)?.[1].trim() || 'Adoption Report';
-}
-
-function slugify(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'report';
-}
-
-function DeliverableCard({ markdown }: { markdown: string }) {
-  const title = deliverableTitle(markdown);
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-navy/15 bg-paper-dim px-4 py-3">
-      <span className="text-xl" aria-hidden>
-        📄
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-navy">{title}</p>
-        <p className="text-xs text-ink-soft">Ready to download</p>
-      </div>
-      <button
-        type="button"
-        onClick={() => downloadPlanAsPdf(markdown, `${slugify(title)}.pdf`)}
-        className="flex-shrink-0 rounded-lg bg-navy px-3 py-1.5 text-xs font-medium text-white transition hover:bg-coral"
-      >
-        Download PDF
-      </button>
-    </div>
-  );
-}
-
 // The card a client-constructed doc message embeds — the Contributor flow's
 // pathway document (see lib/adoption-conversation.ts's
 // appendPathwayDocMessage/appendPublishOutcomeMessage) and the Explorer
@@ -298,22 +293,13 @@ function DocCard({ title, cta, onOpen }: { title: string; cta: string; onOpen: (
 }
 
 // Splits a message on the first document marker it carries and renders the
-// real grid / download card / doc card in place — surrounding text still goes
+// doc card in place — surrounding text still goes
 // through renderInlineMarkdown. A message only ever carries one of these.
 function renderMessageContent(
   text: string,
   onOpenPathwayDocument: (() => void) | undefined,
   onOpenExplorerDocument: ((docType: DocType) => void) | undefined
 ): React.ReactNode[] {
-  const deliverable = extractDeliverable(text);
-  if (deliverable) {
-    const nodes: React.ReactNode[] = [];
-    if (deliverable.before) nodes.push(<div key="before">{renderChatMarkdown(deliverable.before)}</div>);
-    nodes.push(<DeliverableCard key="card" markdown={deliverable.markdown} />);
-    if (deliverable.after) nodes.push(<div key="after">{renderChatMarkdown(deliverable.after)}</div>);
-    return nodes;
-  }
-
   const docMarker = onOpenPathwayDocument
     ? { marker: PATHWAY_DOC_MARKER, title: 'Pathway Document', cta: 'View Pathway Document', open: onOpenPathwayDocument }
     : onOpenExplorerDocument && text.includes(ANALYSIS_DOC_MARKER)
@@ -360,6 +346,9 @@ interface Props {
   // document generation is in flight (both take noticeably longer than a
   // normal chat turn, so the more specific label is worth showing).
   generatingDoc?: boolean;
+  // Contributor: a pathway draft is being written in the background. The
+  // chat stays usable; this only shows a note at the bottom.
+  writingDraft?: boolean;
   placeholder?: string;
   // Only needed by Contributor-flow callers, to render a PathwayDocCard
   // wherever a message contains PATHWAY_DOC_MARKER — Explorer callers omit
@@ -372,6 +361,9 @@ interface Props {
   // Shows a small attach icon in the composer itself when provided, so a
   // file can be staged without opening the separate AttachmentsPanel first.
   onAttachFiles?: (files: File[]) => void;
+  // The attach picker's accept list — the Contributor flow passes
+  // CONTRIBUTOR_ATTACH_ACCEPT (adds the toolkit-asset-only types).
+  attachAccept?: string;
   // Lets the composer's own attachment chips (above) be dismissed inline —
   // omit to render the chips without a remove control.
   onRemoveAttachment?: (id: string) => void;
@@ -386,6 +378,25 @@ interface Props {
     timestamp?: string;
     contributor?: string;
   }>;
+  // Contributor-flow only: answers a toolkit-asset consent card (see
+  // Message.toolkitAssetConsent) and tells the card whether the file is
+  // still held in memory. Explorer callers omit both.
+  onToolkitAssetConsent?: (consentId: string, share: boolean) => Promise<{ ok: boolean; error?: string }>;
+  hasToolkitAssetFile?: (fileName: string) => boolean;
+  // Contributor-flow only: the resource review card (Message.resourceReview)
+  // and the "may this be published?" card (Message.publishConsent) — see
+  // useAdoptionConversation for what each does. Explorer callers omit them.
+  resourceReviewActions?: {
+    decide: (reviewId: string, itemKey: string, share: boolean) => Promise<{ ok: boolean; error?: string }>;
+    attach: (reviewId: string, itemKey: string | null, files: File[]) => void;
+    link: (reviewId: string, itemKey: string | null, url: string) => { ok: boolean; error?: string };
+    finish: (reviewId: string) => void;
+    rememberFile: (file: File) => void;
+  };
+  // Contributor-flow only: the asset card (Message.assetShare) — see
+  // useAdoptionConversation's asset card actions.
+  assetShareActions?: AssetShareActions;
+  onPublishConsent?: (consentId: string, choice: 'send' | 'keep' | 'delete') => Promise<{ ok: boolean; error?: string }>;
   // Hides the "pathway information isn't independently verified" note under
   // the first assistant message — relevant for an Explorer reading someone
   // else's documented pathway, but not for the Contributor who's the one
@@ -403,12 +414,19 @@ export default function ChatPanel({
   pendingAttachments = [],
   loading,
   generatingDoc = false,
+  writingDraft = false,
   placeholder,
   onOpenPathwayDocument,
   onOpenExplorerDocument,
   onAttachFiles,
+  attachAccept = ATTACH_ACCEPT,
   onRemoveAttachment,
   pathwayLookup,
+  onToolkitAssetConsent,
+  hasToolkitAssetFile,
+  resourceReviewActions,
+  assetShareActions,
+  onPublishConsent,
   hideAccuracyDisclaimer,
 }: Props) {
   const [input, setInput] = useState('');
@@ -424,9 +442,15 @@ export default function ChatPanel({
     if (files.length) onAttachFiles?.(files);
   }
 
+  // Follow the conversation only when a message is added or the last one's
+  // visible text grows (streaming). Cards keep their state on a message
+  // (e.g. the asset card), and typing in or confirming one must not jump
+  // the view to the bottom.
+  const lastMessage = messages[messages.length - 1];
+  const scrollKey = `${messages.length}:${(lastMessage?.displayContent ?? lastMessage?.content ?? '').length}`;
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [scrollKey]);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -460,14 +484,82 @@ export default function ChatPanel({
       <div className="flex-1 overflow-y-auto px-4 pt-4 pb-6 sm:px-6">
         <div className="mx-auto max-w-5xl space-y-5">
         {messages.map((m, i) => {
+          if (m.hidden) return null;
+          const review = m.resourceReview;
+          if (review) {
+            if (!resourceReviewActions) return null;
+            return (
+              <div key={i} className="flex justify-start">
+                <div className="w-full max-w-xl">
+                  <ResourceReviewCard
+                    review={review}
+                    busy={loading}
+                    fileAvailable={(fileName) => hasToolkitAssetFile?.(fileName) ?? false}
+                    onRememberFile={resourceReviewActions.rememberFile}
+                    onDecide={(itemKey, share) => resourceReviewActions.decide(review.id, itemKey, share)}
+                    onAttach={(itemKey, files) => resourceReviewActions.attach(review.id, itemKey, files)}
+                    onLink={(itemKey, url) => resourceReviewActions.link(review.id, itemKey, url)}
+                    onFinish={() => resourceReviewActions.finish(review.id)}
+                  />
+                </div>
+              </div>
+            );
+          }
+          const assetCard = m.assetShare;
+          if (assetCard) {
+            if (!assetShareActions) return null;
+            return (
+              <div key={i} className="flex justify-start">
+                <div className="w-full max-w-xl">
+                  <AssetShareCard
+                    card={assetCard}
+                    fileAvailable={(fileName) => hasToolkitAssetFile?.(fileName) ?? false}
+                    actions={assetShareActions}
+                  />
+                </div>
+              </div>
+            );
+          }
+          const publishConsent = m.publishConsent;
+          if (publishConsent) {
+            if (!onPublishConsent) return null;
+            return (
+              <div key={i} className="flex justify-start">
+                <div className="w-full max-w-xl">
+                  <PublishConsentCard
+                    consent={publishConsent}
+                    onAnswer={(choice) => onPublishConsent(publishConsent.id, choice)}
+                  />
+                </div>
+              </div>
+            );
+          }
+          const consent = m.toolkitAssetConsent;
+          if (consent) {
+            if (!onToolkitAssetConsent) return null;
+            return (
+              <div key={i} className="flex justify-start">
+                <div className="w-full max-w-xl">
+                  <ToolkitAssetConsentCard
+                    consent={consent}
+                    fileAvailable={
+                      'fileName' in consent.candidate.source
+                        ? (hasToolkitAssetFile?.(consent.candidate.source.fileName) ?? false)
+                        : true
+                    }
+                    onAnswer={(share) => onToolkitAssetConsent(consent.id, share)}
+                  />
+                </div>
+              </div>
+            );
+          }
           // Strip the legacy per-message grid marker here, once, so it never
           // surfaces as literal text down either render path below — the
           // grid itself now lives once, persistently, in the workspace header.
           const text = (m.displayContent ?? m.content).split(CUBE_GRID_MARKER).join('');
           const isRich =
             m.role === 'assistant' &&
-            (text.includes(DELIVERABLE_START) ||
-              (onOpenPathwayDocument && text.includes(PATHWAY_DOC_MARKER)) ||
+            ((onOpenPathwayDocument && text.includes(PATHWAY_DOC_MARKER)) ||
               (onOpenExplorerDocument &&
                 (text.includes(ANALYSIS_DOC_MARKER) || text.includes(EXEC_SUMMARY_MARKER))));
           const isFirstAssistant = m.role === 'assistant' && messages.slice(0, i).every(msg => msg.role !== 'assistant');
@@ -481,6 +573,13 @@ export default function ChatPanel({
               All pathway information shared here comes from the respective contributing organizations. The Cube does not validate or guarantee its accuracy — the contributor owns that.
             </div>
           ) : null;
+
+          const assetsBlock =
+            m.role === 'assistant' && m.toolkitAssetsReferenced?.length ? (
+              <div className="whitespace-normal">
+                <ToolkitAssetCards ids={m.toolkitAssetsReferenced} />
+              </div>
+            ) : null;
 
           const sourcesBlock = sources ? (
             <div className="mt-3 border-t border-navy/10 pt-3">
@@ -515,29 +614,23 @@ export default function ChatPanel({
               className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`${isRich || m.generatingDoc ? 'w-full' : 'max-w-[80%]'} rounded-2xl px-5 py-3 text-[15px] leading-relaxed whitespace-pre-wrap ${
+                className={`${isRich ? 'w-full' : 'max-w-[80%]'} rounded-2xl px-5 py-3 text-[15px] leading-relaxed whitespace-pre-wrap ${
                   m.role === 'user'
                     ? 'bg-coral text-white'
                     : 'bg-paper-dim text-ink'
                 }`}
               >
-                {m.generatingDoc ? (
-                  <div className="space-y-3">
-                    {text && <span>{renderInlineMarkdown(text)}</span>}
-                    <div className="flex items-center gap-2 text-ink-soft animate-pulse">
-                      <span aria-hidden>📄</span>
-                      Generating your document…
-                    </div>
-                  </div>
-                ) : isRich ? (
+                {isRich ? (
                   <div className="space-y-3">
                     {renderMessageContent(text, onOpenPathwayDocument, onOpenExplorerDocument)}
+                    {assetsBlock}
                     {disclaimerBlock}
                     {sourcesBlock}
                   </div>
                 ) : (
                   <>
                     {renderInlineMarkdown(text)}
+                    {assetsBlock}
                     {disclaimerBlock}
                     {sourcesBlock}
                   </>
@@ -546,6 +639,13 @@ export default function ChatPanel({
             </div>
           );
         })}
+        {writingDraft && (
+          <div className="flex justify-start">
+            <div className="bg-paper-dim text-ink-soft rounded-2xl px-5 py-3 text-[15px] animate-pulse">
+              Writing the pathway document… you can keep going meanwhile.
+            </div>
+          </div>
+        )}
         {loading && (
           <div className="flex justify-start">
             <div className="bg-paper-dim text-ink-soft rounded-2xl px-5 py-3 text-[15px] animate-pulse">
@@ -592,7 +692,7 @@ export default function ChatPanel({
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept=".pdf,.docx,.xlsx,.xls,.pptx,.txt,.md,.png,.jpg,.jpeg,.gif,.webp"
+                accept={attachAccept}
                 className="hidden"
                 onChange={handleFileChange}
               />
@@ -617,6 +717,7 @@ export default function ChatPanel({
             placeholder={placeholder ?? 'Type a message…'}
             disabled={loading}
           />
+          <VoiceInputButton value={input} onChange={setInput} disabled={loading} />
           <button
             onClick={handleSend}
             disabled={!canSend}

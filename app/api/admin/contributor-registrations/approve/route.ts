@@ -2,13 +2,14 @@ import { createClient } from '@/lib/supabase/server';
 import { isAdmin } from '@/lib/roles';
 import { approveContributor } from '@/lib/contributor-registration-server';
 
+import { withErrorHandling } from '@/lib/errors';
 // Approving a registration flips access_status so /contribute stops showing
 // the "under review" / "not approved" screen, grants the pathway_contributor
 // role (the real gate — see lib/roles.ts), and backfills org_id. Works on a
 // pending or a previously rejected registration. All of it lives in
 // approveContributor() so a direct role grant from the Roles panel does the
 // same thing.
-export async function POST(req: Request) {
+async function handlePOST(req: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -18,7 +19,8 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Not authorized.' }, { status: 403 });
   }
 
-  const { registration_id } = await req.json();
+  // Malformed JSON falls through to the 400 below rather than a 500.
+  const { registration_id } = (await req.json().catch(() => null)) ?? {};
   if (typeof registration_id !== 'string') {
     return Response.json({ error: 'Invalid request.' }, { status: 400 });
   }
@@ -28,3 +30,5 @@ export async function POST(req: Request) {
 
   return Response.json({ ok: true });
 }
+
+export const POST = withErrorHandling('api/admin/contributor-registrations/approve', handlePOST);

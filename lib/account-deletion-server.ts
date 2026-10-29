@@ -1,9 +1,9 @@
-// Server-only — uses the service-role client. Shared by self-serve deletion
-// (app/api/account/delete) and an admin rejecting a pending signup
-// (app/api/admin/reject), so both take the same cleanup path rather than the
-// admin route calling deleteUser bare (skipping the published-unit detach).
+// Server-only — uses the service-role client. Used by self-serve deletion
+// (app/api/account/delete); does the full cleanup rather than calling
+// deleteUser bare and leaving draft asset files behind.
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { removeAssetObjects } from '@/lib/toolkit-assets-server';
 
 /**
  * Deleting the auth user cascades away everything personal — roles,
@@ -31,6 +31,19 @@ export async function deleteAccount(userId: string, logTag: string): Promise<boo
     console.error(`[${logTag}] published units — is migration 0033 applied?`, unitsError);
     return false;
   }
+
+  // Unpublished toolkit asset files go with the account (published ones stay
+  // downloadable, like every other published unit). Removed before their
+  // rows, so no file is left behind without a row pointing at it; a storage
+  // failure is logged, never blocks the deletion.
+  const { data: draftAssetFiles } = await admin
+    .from('contribution_units')
+    .select('storage_path')
+    .eq('user_id', userId)
+    .eq('unit_type', 'toolkit-asset')
+    .is('published_at', null)
+    .not('storage_path', 'is', null);
+  await removeAssetObjects((draftAssetFiles ?? []).map((a) => a.storage_path as string));
 
   // Unpublished drafts go with the account.
   const { error: draftsError } = await admin

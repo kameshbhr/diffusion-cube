@@ -2,9 +2,18 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { GENERIC_ERROR_MESSAGE } from '@/lib/error-messages';
 import { libraryPathways, libraryStages, type Accent, type LibraryPathway, type Stage } from '@/lib/library-pathways';
+import { parseToolkitAssetsTag, stripToolkitAssetsTag } from '@/lib/toolkit-assets';
+import ToolkitAssetCards from '@/components/ToolkitAssetCards';
+import VoiceInputButton from '@/components/VoiceInputButton';
 
-type ChatMessage = { role: 'user' | 'assistant'; content: string };
+// toolkitAssets: ids of published toolkit assets an assistant reply offered
+// (parsed from its trailing <toolkit_assets> tag, which is never shown) —
+// rendered as download cards under that reply and saved with the chat.
+// `notice` marks a client-made status bubble (a rejected request) — shown, but
+// never sent back to /api/chat as history and never saved.
+type ChatMessage = { role: 'user' | 'assistant'; content: string; toolkitAssets?: string[]; notice?: true };
 type View = 'library' | 'chat';
 
 // A signed-in visitor's saved chat (library_conversations) — an anonymous
@@ -181,17 +190,45 @@ export default function ExploreLibrary({
   async function streamReply(history: ChatMessage[], pathwayId: string | undefined, pathway: LibraryPathway | null) {
     setMessages([...history, { role: 'assistant', content: '' }]);
     setIsThinking(true);
+    // What has streamed in so far — kept if the reply breaks off partway.
+    let text = '';
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: history, mode: 'library', pathwayId }),
+        // Only role/content go to the model — never UI-only fields like toolkitAssets.
+        body: JSON.stringify({
+          messages: history.filter((m) => !m.notice).map(({ role, content }) => ({ role, content })),
+          mode: 'library',
+          pathwayId,
+        }),
       });
+      // A rejected request comes back as JSON, not a stream — show a plain
+      // notice instead of rendering that JSON as Cube's reply. For a 400/429
+      // the visitor's message is taken back out of the conversation and
+      // returned to the input box, so the next send doesn't resend it.
+      if (!res.ok) {
+        const last = history[history.length - 1];
+        const giveBack = (res.status === 400 || res.status === 429) && last?.role === 'user' ? last : null;
+        let notice: string;
+        if (res.status === 429) {
+          notice = 'Too many requests. Please try again later.';
+        } else if (res.status === 400) {
+          notice = "Your message couldn't be sent. Please shorten it or start a new chat.";
+        } else if (res.status < 500) {
+          const body = await res.json().catch(() => null);
+          notice = typeof body?.error === 'string' ? body.error : GENERIC_ERROR_MESSAGE;
+        } else {
+          notice = GENERIC_ERROR_MESSAGE;
+        }
+        if (giveBack) setDraft(giveBack.content);
+        setMessages([...(giveBack ? history.slice(0, -1) : history), { role: 'assistant', content: notice, notice: true }]);
+        return;
+      }
       if (!res.body) throw new Error('No response body');
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let text = '';
       let firstChunk = true;
       while (true) {
         const { done, value } = await reader.read();
@@ -201,13 +238,28 @@ export default function ExploreLibrary({
           firstChunk = false;
           setIsThinking(false);
         }
-        setMessages([...history, { role: 'assistant', content: text }]);
+        // Hide the <toolkit_assets> tag from the moment it starts streaming.
+        setMessages([...history, { role: 'assistant', content: stripToolkitAssetsTag(text) }]);
       }
-      void saveConversation([...history, { role: 'assistant', content: text }], pathway);
+      const assetIds = parseToolkitAssetsTag(text);
+      const reply: ChatMessage = {
+        role: 'assistant',
+        content: stripToolkitAssetsTag(text),
+        ...(assetIds.length ? { toolkitAssets: assetIds } : {}),
+      };
+      setMessages([...history, reply]);
+      void saveConversation([...history.filter((m) => !m.notice), reply], pathway);
     } catch {
+      // Couldn't reach the server, or the reply broke off partway: keep what
+      // arrived, put the generic message under it, and don't save the turn.
+      const partial = stripToolkitAssetsTag(text).trim();
       setMessages([
         ...history,
-        { role: 'assistant', content: "Sorry, I couldn't reach the assistant. Try again in a moment." },
+        {
+          role: 'assistant',
+          content: partial ? `${partial}\n\n${GENERIC_ERROR_MESSAGE}` : GENERIC_ERROR_MESSAGE,
+          notice: true,
+        },
       ]);
     } finally {
       setIsThinking(false);
@@ -292,6 +344,7 @@ export default function ExploreLibrary({
             minHeight={24}
             maxHeight={120}
           />
+          <VoiceInputButton value={draft} onChange={setDraft} className="h-12 w-12" />
           <SendButton disabled={!draft.trim() || isThinking} size="lg" />
         </form>
         <p className="mt-3 text-xs text-ink-soft">Start with a question, then follow the thread into a specific pathway.</p>
@@ -560,6 +613,9 @@ function ChatView({
                 }`}
             >
               <MessageText content={m.content} />
+              {m.role === 'assistant' && m.toolkitAssets?.length && selected ? (
+                <ToolkitAssetCards ids={m.toolkitAssets} pathwaySlug={selected.id} />
+              ) : null}
             </div>
           ))}
           {isThinking && (
@@ -590,6 +646,7 @@ function ChatView({
             minHeight={24}
             maxHeight={160}
           />
+          <VoiceInputButton value={draft} onChange={setDraft} />
           <SendButton disabled={!draft.trim() || isThinking} />
         </form>
       </div>

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { hasRole } from '@/lib/roles'
 import { ensureOrganisation } from '@/lib/organisations'
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+import { withErrorHandling } from '@/lib/errors'
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: pathwayId } = await params
 
   const supabase = await createClient()
@@ -13,8 +15,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Contributor role required' }, { status: 403 })
   }
 
-  // Verify the pathway exists
-  const { data: pathway } = await supabase
+  // Verify the pathway exists — with the service role, since the caller isn't
+  // a member yet and the pathways RLS (migration 0040) only shows members.
+  const { data: pathway } = await createAdminClient()
     .from('pathways')
     .select('id')
     .eq('id', pathwayId)
@@ -50,12 +53,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   // Find or create the org
-  let orgId: string | null = null
-  try {
-    orgId = await ensureOrganisation(orgName, orgRole, orgUrl)
-  } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 })
-  }
+  // A failure here throws to withErrorHandling, which records the stack and
+  // answers with the generic message.
+  const orgId: string | null = await ensureOrganisation(orgName, orgRole, orgUrl)
 
   // Insert the contributor row — user's own RLS allows this
   const { error } = await supabase.from('pathway_contributors').insert({
@@ -68,3 +68,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }
+
+// Leave a pathway — the Contribute grid's Delete, after it has deleted this
+// person's own workspace(s) for it via /api/contributions/[designId]. Only
+// removes their own membership row; the pathway and anything already
+// published for it stay. Service-role because 0021 has no delete policy on
+// pathway_contributors.
+async function handleDELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id: pathwayId } = await params
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { error } = await createAdminClient()
+    .from('pathway_contributors')
+    .delete()
+    .eq('pathway_id', pathwayId)
+    .eq('user_id', user.id)
+  if (error) {
+    console.error('[pathways/leave]', error)
+    return NextResponse.json({ error: 'Could not remove this contribution. Try again.' }, { status: 500 })
+  }
+  return NextResponse.json({ ok: true })
+}
+
+export const POST = withErrorHandling('api/pathways/[id]/join', handlePOST)
+export const DELETE = withErrorHandling('api/pathways/[id]/join', handleDELETE)

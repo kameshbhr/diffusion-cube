@@ -5,8 +5,10 @@ import Link from 'next/link';
 import ChatPanel, { Message } from '@/components/ChatPanel';
 import HeatmapGrid from '@/components/HeatmapGrid';
 import AttachmentsPanel from '@/components/AttachmentsPanel';
+import ReusableAssetsPanel from '@/components/ReusableAssetsPanel';
 import PathwayDocumentPane from '@/components/PathwayDocumentPane';
 import AdoptionPlanModal from '@/components/AdoptionPlanModal';
+import VoiceInputButton from '@/components/VoiceInputButton';
 import {
   AdoptionConversation,
   AdoptionFlow,
@@ -21,10 +23,12 @@ import {
 } from '@/lib/explorer-intents';
 import type { DocType } from '@/lib/design-documents';
 import { EMPTY_GRID } from '@/lib/dimensions';
+import { ATTACH_ACCEPT, CONTRIBUTOR_ATTACH_ACCEPT } from '@/lib/extract-text';
 
 const CONTRIBUTOR_OPENING_MESSAGE: Message = {
   role: 'assistant',
-  content: "Please share your deployment related documents (pdf, docx). I'll read through them and put together a draft pathway for you to check.",
+  content:
+    "Please share your deployment documents (PDF, Word, PowerPoint and so on), or describe the project here — you can add more at any point. I'll read them (and check the stage with you only if they don't say it), draft the pathway, then check with you which reusable resources (templates, checklists, tools and so on) you'd like to share with it.\n\nNothing becomes public unless you agree and an administrator approves it. Your progress is saved, so you can leave and come back any time.",
 };
 
 const STRENGTHEN_OPENING_MESSAGE: Message = {
@@ -113,12 +117,33 @@ export default function AdoptionWorkspace({
     handleUserSend,
     handleAttachFiles,
     removeAttachment,
+    hasToolkitAssetFile,
+    rememberToolkitAssetFile,
+    answerToolkitAssetConsent,
+    decideResourceItem,
+    attachForResourceItem,
+    linkForResourceItem,
+    finishResourceReview,
+    stageAssetFiles,
+    stageAssetLink,
+    takeSuggestedAssetFile,
+    unstageAsset,
+    renameAsset,
+    describeAsset,
+    removeSharedAsset,
+    confirmAssetCard,
+    confirmOpenAssetCards,
+    stageAssetFilesFromList,
+    deleteAsset,
+    reopenAssetCard,
+    requestPublishConsent,
+    answerPublishConsent,
+    toolkitAssetsVersion,
     pathwayDoc,
     pathwayPreview,
     openPathwayDocument,
     closePathwayDocument,
     selectPathwayDocVersion,
-    publishPathwayDocument,
     explorerDoc,
     openExplorerDocument,
     closeExplorerDocument,
@@ -130,6 +155,7 @@ export default function AdoptionWorkspace({
   const [welcomeInput, setWelcomeInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
+  const [assetsOpen, setAssetsOpen] = useState(false);
   const [headerExpanded, setHeaderExpanded] = useState(true);
 
   // Resizable right panel — shared across all workspace states.
@@ -340,7 +366,7 @@ export default function AdoptionWorkspace({
                 markdown={pathwayDocMarkdown}
                 loading={pathwayDoc.loading}
                 error={pathwayDoc.error}
-                onPublish={publishPathwayDocument}
+                onPublish={requestPublishConsent}
                 status={pathwayDocStatus}
                 versions={(() => {
                   const all = pathwayDoc.versions;
@@ -357,6 +383,8 @@ export default function AdoptionWorkspace({
                 onSelectVersion={selectPathwayDocVersion}
                 onClose={closeRightPanel}
                 deploymentName={conversation?.meta.name}
+                pathwayId={conversation?.meta.pathwayId || undefined}
+                toolkitAssetsRefreshKey={toolkitAssetsVersion}
               />
             </div>
           )}
@@ -364,7 +392,6 @@ export default function AdoptionWorkspace({
           {(rightPanel === 'analysis' || rightPanel === 'summary') && explorerDocType && (
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <AdoptionPlanModal
-                mode="panel"
                 title={EXPLORER_DOC_LABELS[explorerDocType].title}
                 markdown={explorerDocMarkdown}
                 loading={explorerDoc.generating === explorerDocType}
@@ -484,6 +511,7 @@ export default function AdoptionWorkspace({
                 placeholder="Describe your adoption, ask a question, or attach a document…"
                 disabled={loading}
               />
+              <VoiceInputButton value={welcomeInput} onChange={setWelcomeInput} disabled={loading} className="h-10 w-10" />
               <button
                 type="button"
                 onClick={handleStart}
@@ -545,7 +573,7 @@ export default function AdoptionWorkspace({
                       onClick={() => setFilesOpen(true)}
                       className="rounded-lg border border-navy/15 px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-coral hover:text-coral"
                     >
-                      📎 Files
+                      📎 Project files
                     </button>
                     <button
                       onClick={() =>
@@ -587,10 +615,12 @@ export default function AdoptionWorkspace({
                 messages={[preChat.opening]}
                 onSend={(text) => handleUserSend(text, preChatFlow, preChatIntent)}
                 onAttachFiles={(files) => handleAttachFiles(files, preChatFlow, preChatIntent)}
+                attachAccept={CONTRIBUTOR_ATTACH_ACCEPT}
                 onRemoveAttachment={removeAttachment}
                 pendingAttachments={pendingAttachments}
                 loading={loading}
-                generatingDoc={pathwayDoc.loading || explorerDoc.generating !== null}
+                generatingDoc={explorerDoc.generating !== null}
+                writingDraft={pathwayDoc.loading}
                 placeholder="Ask, share, or think out loud…"
                 pathwayLookup={pathwayLookup}
                 hideAccuracyDisclaimer
@@ -622,6 +652,7 @@ export default function AdoptionWorkspace({
                   attachments={pendingAttachments}
                   onAttachFiles={(files) => handleAttachFiles(files, preChatFlow, preChatIntent)}
                   onRemoveAttachment={removeAttachment}
+                  accept={CONTRIBUTOR_ATTACH_ACCEPT}
                 />
               </div>
             </div>
@@ -746,6 +777,7 @@ export default function AdoptionWorkspace({
                 placeholder="Describe your adoption, or drop a document…"
                 disabled={loading}
               />
+              <VoiceInputButton value={welcomeInput} onChange={setWelcomeInput} disabled={loading} className="h-10 w-10" />
               {fixedFlow && (
                 <button
                   onClick={() =>
@@ -803,6 +835,9 @@ export default function AdoptionWorkspace({
     ? [conversationOpeningMessage, ...conversation.messages]
     : conversation.messages;
 
+  // Every asset card in the chat — the Reusable assets popup lists their items.
+  const assetCards = conversation.messages.flatMap((m) => (m.assetShare ? [m.assetShare] : []));
+
   return (
     <div
       className="relative flex flex-1 overflow-hidden bg-paper"
@@ -840,11 +875,20 @@ export default function AdoptionWorkspace({
                   <span />
                 )}
                 <div className="flex flex-shrink-0 items-center gap-2">
+                  {flow === 'contributor' && (
+                    <button
+                      onClick={() => setAssetsOpen(true)}
+                      disabled={assetCards.length === 0}
+                      className="rounded-lg border border-navy/15 px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-coral hover:text-coral disabled:opacity-40 disabled:hover:border-navy/15 disabled:hover:text-ink-soft"
+                    >
+                      Reusable assets
+                    </button>
+                  )}
                   <button
                     onClick={() => setFilesOpen(true)}
                     className="rounded-lg border border-navy/15 px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:border-coral hover:text-coral"
                   >
-                    📎 Files
+                    📎 Project files
                   </button>
                   <button
                     onClick={() =>
@@ -962,10 +1006,12 @@ export default function AdoptionWorkspace({
               messages={displayMessages}
               onSend={handleUserSend}
               onAttachFiles={handleAttachFiles}
+              attachAccept={flow === 'contributor' ? CONTRIBUTOR_ATTACH_ACCEPT : ATTACH_ACCEPT}
               onRemoveAttachment={removeAttachment}
               pendingAttachments={pendingAttachments}
               loading={loading}
-              generatingDoc={pathwayDoc.loading || explorerDoc.generating !== null}
+              generatingDoc={explorerDoc.generating !== null}
+              writingDraft={pathwayDoc.loading}
               placeholder="Ask, share, or think out loud…"
               onOpenPathwayDocument={
                 flow === 'contributor' ? () => openRightPanel('document') : undefined
@@ -979,6 +1025,35 @@ export default function AdoptionWorkspace({
                   : undefined
               }
               pathwayLookup={pathwayLookup}
+              onToolkitAssetConsent={flow === 'contributor' ? answerToolkitAssetConsent : undefined}
+              hasToolkitAssetFile={hasToolkitAssetFile}
+              resourceReviewActions={
+                flow === 'contributor'
+                  ? {
+                      decide: decideResourceItem,
+                      attach: attachForResourceItem,
+                      link: linkForResourceItem,
+                      finish: (reviewId) => void finishResourceReview(reviewId),
+                      rememberFile: rememberToolkitAssetFile,
+                    }
+                  : undefined
+              }
+              assetShareActions={
+                flow === 'contributor'
+                  ? {
+                      stageFiles: stageAssetFiles,
+                      stageLink: stageAssetLink,
+                      takeSuggested: takeSuggestedAssetFile,
+                      unstage: unstageAsset,
+                      rename: renameAsset,
+                      describe: describeAsset,
+                      remove: removeSharedAsset,
+                      confirm: confirmAssetCard,
+                      reopen: reopenAssetCard,
+                    }
+                  : undefined
+              }
+              onPublishConsent={flow === 'contributor' ? answerPublishConsent : undefined}
               hideAccuracyDisclaimer={flow === 'contributor'}
             />
           </div>
@@ -986,6 +1061,33 @@ export default function AdoptionWorkspace({
 
         {/* ── Right panel (full height, resizable) ── */}
         {renderRightPanel(conversation.grid)}
+
+        {assetsOpen && (
+          <div
+            className="fixed inset-0 z-40 flex items-end bg-navy/40 p-0 md:items-center md:justify-center md:p-4"
+            onClick={() => setAssetsOpen(false)}
+          >
+            <div
+              className="flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-2xl bg-paper shadow-xl md:max-h-[80vh] md:max-w-2xl md:rounded-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ReusableAssetsPanel
+                cards={assetCards}
+                fileAvailable={hasToolkitAssetFile}
+                onClose={() => setAssetsOpen(false)}
+                actions={{
+                  stageFiles: stageAssetFilesFromList,
+                  unstage: unstageAsset,
+                  rename: renameAsset,
+                  describe: describeAsset,
+                  remove: removeSharedAsset,
+                  deleteAsset,
+                  confirmAll: confirmOpenAssetCards,
+                }}
+              />
+            </div>
+          </div>
+        )}
 
         {filesOpen && (
           <div
@@ -1008,8 +1110,21 @@ export default function AdoptionWorkspace({
               <AttachmentsPanel
                 attachments={pendingAttachments}
                 uploadedFileNames={extractUploadedFileNames(conversation.messages)}
+                viewableFiles={
+                  flow === 'contributor'
+                    ? Object.fromEntries(
+                        conversation.messages.flatMap((m) => {
+                          const c = m.toolkitAssetConsent;
+                          return c?.status === 'shared' && c.assetId && 'fileName' in c.candidate.source
+                            ? [[c.candidate.source.fileName, c.assetId]]
+                            : [];
+                        })
+                      )
+                    : undefined
+                }
                 onAttachFiles={handleAttachFiles}
                 onRemoveAttachment={removeAttachment}
+                accept={flow === 'contributor' ? CONTRIBUTOR_ATTACH_ACCEPT : ATTACH_ACCEPT}
               />
             </div>
           </div>
