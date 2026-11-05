@@ -16,10 +16,13 @@ const STYLE: Record<JobState, { dot: string; text: string }> = {
 
 // A small, calm marker for a job state. No marker at all means "not
 // discussed", which is never shown as a gap or warning.
-export default function StateMarker({ state, byUser }: { state: JobState; byUser?: boolean }) {
+export default function StateMarker({ state, byUser, title }: { state: JobState; byUser?: boolean; title?: string }) {
   const s = STYLE[state];
   return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${s.text}`} title={byUser ? 'Set by you' : 'From your conversation with Cube'}>
+    <span
+      className={`inline-flex items-center gap-1.5 text-xs font-medium ${s.text}`}
+      title={title ?? (byUser ? 'Set by you' : 'From your conversation with Cube')}
+    >
       <span aria-hidden className={`h-2 w-2 flex-shrink-0 rounded-full ${s.dot}`} />
       {STATE_LABEL[state]}
     </span>
