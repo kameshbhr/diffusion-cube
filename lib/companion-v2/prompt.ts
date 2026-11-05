@@ -237,6 +237,34 @@ export function renderUserFacts(opts: {
   return L.join('\n');
 }
 
+const CONTRIBUTOR_PROMPT_FILE = path.join(process.cwd(), 'content', 'companion-v2-contributor.md');
+
+export async function loadContributorInstructions(): Promise<string> {
+  return (await readFile(CONTRIBUTOR_PROMPT_FILE, 'utf-8')).trim();
+}
+
+/**
+ * The contributor's system prompt: instructions, the playbook as its exact
+ * canonical JSON (the field names and list positions the patch ops use), and
+ * the source document. All three are cached together; a saved edit changes
+ * the text, so the cache refreshes itself.
+ */
+export function buildContributorSystem(parts: {
+  instructions: string;
+  playbookJson: string;
+  sourceDoc: string;
+}): Anthropic.TextBlockParam[] {
+  return [
+    { type: 'text', text: parts.instructions },
+    { type: 'text', text: `# The playbook (current, exact JSON)\n\n${parts.playbookJson}` },
+    {
+      type: 'text',
+      text: `# The source document (current)\n\n${parts.sourceDoc.trim() || '(empty)'}`,
+      cache_control: { type: 'ephemeral' },
+    },
+  ];
+}
+
 export function buildSystemBlocks(parts: {
   instructions: string;
   playbookText: string;

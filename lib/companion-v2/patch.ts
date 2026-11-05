@@ -103,7 +103,9 @@ export type PatchOp =
   | { op: 'source.add_section'; after_heading: string | null; heading: string; text: string }
   | { op: 'source.replace'; find: string; replace: string }
   | { op: 'source.insert_after'; find: string; text: string }
-  | { op: 'source.append'; text: string };
+  | { op: 'source.append'; text: string }
+  /** The whole source document. From the Source document editor only; never proposed by Cube. */
+  | { op: 'source.set'; value: string };
 
 export type OpResult = { ok: true } | { ok: false; error: string };
 
@@ -278,7 +280,9 @@ function countOccurrences(hay: string, needle: string): number {
 const trimBlock = (t: string) => t.replace(/^\n+|\s+$/g, '');
 
 /** Every text field a source op uses must be a string (a model may omit one). */
-function checkSourceOp(op: Extract<PatchOp, { op: `source.${string}` }>): void {
+type SourceOp = Exclude<Extract<PatchOp, { op: `source.${string}` }>, { op: 'source.set' }>;
+
+function checkSourceOp(op: SourceOp): void {
   const r = op as unknown as Record<string, unknown>;
   const need: Record<string, string[]> = {
     'source.replace_section': ['heading', 'text'],
@@ -293,7 +297,7 @@ function checkSourceOp(op: Extract<PatchOp, { op: `source.${string}` }>): void {
     fail('This change is missing where to put the new section.');
 }
 
-function applySource(doc: string, op: Extract<PatchOp, { op: `source.${string}` }>): string {
+function applySource(doc: string, op: SourceOp): string {
   checkSourceOp(op);
   const lines = doc.split('\n');
   switch (op.op) {
@@ -490,6 +494,10 @@ function applyOne(s: Snapshot, op: PatchOp, removedInPatch: Set<string>): void {
     case 'source.append':
       s.playbook.source_doc = applySource(s.playbook.source_doc, op);
       return;
+    case 'source.set':
+      if (!isStr(op.value)) fail('The source document must be text.');
+      s.playbook.source_doc = op.value;
+      return;
     default:
       fail(`Unknown change "${(op as { op: string }).op}".`);
   }
@@ -533,6 +541,23 @@ export function checkGuards(s: Snapshot): string[] {
     problems.push('Content marked "Only for Author" can\'t be published in the playbook or the source document.');
   if (!s.playbook.title.trim()) problems.push('The playbook needs a title.');
   return problems;
+}
+
+/** The source document is loaded whole into Cube's prompt; this is its budget, in tokens. */
+export const SOURCE_TOKEN_CAP = 100_000;
+/** A rough token count (about 4 characters per token). */
+export const sourceTokens = (doc: string) => Math.ceil(doc.length / 4);
+
+/**
+ * Blocks a change that makes the source document longer than its budget. A
+ * document already over it can still be shortened.
+ */
+export function checkSize(base: Snapshot, next: Snapshot): string[] {
+  const after = sourceTokens(next.playbook.source_doc);
+  if (after <= SOURCE_TOKEN_CAP || after <= sourceTokens(base.playbook.source_doc)) return [];
+  return [
+    `This would make the source document about ${after.toLocaleString("en")} tokens, over the ${SOURCE_TOKEN_CAP.toLocaleString("en")} Cube can read whole. Shorten it first, or leave some of these changes out.`,
+  ];
 }
 
 /**

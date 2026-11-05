@@ -1,8 +1,25 @@
-import Placeholder from '@/components/companion-v2/Placeholder';
-import { requireContributor } from '@/lib/companion-v2/server';
+import ContributorChat from '@/components/companion-v2/ContributorChat';
+import { loadPlaybookContent, requireContributor, toSnapshot } from '@/lib/companion-v2/server';
 
-export default async function UpdateWithCubePage({ params }: { params: Promise<{ slug: string }> }) {
+// Contributor-only: Update with Cube. 404 for everyone else (requireContributor).
+export default async function UpdateWithCubePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ from?: string }>;
+}) {
   const { slug } = await params;
-  await requireContributor(slug);
-  return <Placeholder title="Update with Cube" body="Ask Cube to change the playbook or the source document, then review the changes before applying them. Coming in a later build step." />;
+  const { from } = await searchParams;
+  const { playbook } = await requireContributor(slug);
+  const { playbook: full, jobs } = await loadPlaybookContent(playbook.id);
+
+  return (
+    <ContributorChat
+      playbookId={full.id}
+      base={toSnapshot(full, jobs)}
+      updatedAt={full.updated_at}
+      fromFiles={from === 'files'}
+    />
+  );
 }

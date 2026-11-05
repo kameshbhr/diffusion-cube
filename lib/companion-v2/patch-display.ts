@@ -123,6 +123,8 @@ export function opLabel(op: PatchOp, s: Snapshot): string {
       return 'Source document → insert text';
     case 'source.append':
       return 'Source document → add at the end';
+    case 'source.set':
+      return 'Source document';
   }
 }
 
@@ -163,6 +165,8 @@ export function opTarget(op: PatchOp, s: Snapshot): unknown {
 
 /** Which part of an op a contributor may edit in the diff screen. */
 export function editableKey(op: PatchOp): 'value' | 'item' | 'text' | 'replace' | null {
+  // The whole document is edited in its own editor, not in the diff card.
+  if (op.op === 'source.set') return null;
   if ('value' in op && op.op !== 'job.add') return 'value';
   if ('item' in op) return 'item';
   if ('replace' in op) return 'replace';

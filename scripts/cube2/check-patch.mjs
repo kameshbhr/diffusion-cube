@@ -6,7 +6,16 @@
 // type imports). Prints PASS/FAIL per check and exits 1 on any failure.
 
 import { readFileSync } from 'node:fs';
-import { applyOps, checkGuards, checkWarnings, isEmptySave, listOps, toSave } from '../../lib/companion-v2/patch.ts';
+import { applyOps, checkGuards, checkSize, checkWarnings, isEmptySave, listOps, toSave } from '../../lib/companion-v2/patch.ts';
+import {
+  chunkFiles,
+  modelOpProblem,
+  overlappingOps,
+  parsePatchBlock,
+  sanitizePatch,
+  splitText,
+  stripPatchBlock,
+} from '../../lib/companion-v2/playbook-patch.ts';
 
 const seed = JSON.parse(readFileSync(new URL('../../content/playbooks/low-resource-language.json', import.meta.url), 'utf8'));
 const source = readFileSync(new URL('../../content/playbooks/low-resource-language.source.md', import.meta.url), 'utf8');
@@ -181,6 +190,105 @@ ok('seed passes the guards', checkGuards(base).length === 0);
   ok('"only for authorised staff" is allowed', checkGuards(fine).length === 0);
 }
 ok('no change gives an empty save', isEmptySave(toSave(base, run([]).next)));
+
+// ---------- source.set (Source document editor) ----------
+{
+  const { next, results } = run([{ op: 'source.set', value: '# New\n\nText' }]);
+  ok('source.set replaces the whole document', results[0].ok && next.playbook.source_doc === '# New\n\nText');
+  ok('source.set needs text', !run([{ op: 'source.set', value: 5 }]).results[0].ok);
+}
+
+// ---------- <playbook_patch> parsing (Update with Cube) ----------
+{
+  const block = JSON.stringify({
+    summary: 's',
+    question: null,
+    ops: [{ op: 'job.set', job: 'S4', field: 'when', value: '2-3 months' }],
+    contradictions: [],
+  });
+  const reply = `I changed the when.\n\n<playbook_patch>${block}</playbook_patch>`;
+  ok('parse reads the block', parsePatchBlock(reply)?.ops?.length === 1);
+  ok('strip hides the block', stripPatchBlock(reply) === 'I changed the when.');
+  ok('strip hides a half-streamed tag', stripPatchBlock('Text <playbook_pa') === 'Text');
+  ok('strip hides an unfinished block', stripPatchBlock('Text <playbook_patch>{"ops":[') === 'Text');
+  const fence = '`'.repeat(3);
+  ok('a fenced block still parses', parsePatchBlock(`<playbook_patch>\n${fence}json\n{"ops":[]}\n${fence}\n</playbook_patch>`)?.ops?.length === 0);
+  ok('bad JSON gives null', parsePatchBlock('<playbook_patch>{oops}</playbook_patch>') === null);
+  ok('no block gives null', parsePatchBlock('Just text.') === null);
+
+  const md = 'Between "Must Have" and "Good to Have".\n\n- a\n- b';
+  const withText = `Done.\n<playbook_patch>{"summary":"s","question":null,"ops":[{"op":"source.append","text":{"block":1}}],"contradictions":[]}</playbook_patch>\n<patch_text id="1">\n${md}\n</patch_text>`;
+  const filled = parsePatchBlock(withText);
+  ok('text blocks fill {"block":N}', filled?.ops?.[0]?.text === md);
+  ok('strip hides text blocks too', stripPatchBlock(withText) === 'Done.');
+  ok('strip hides a text block that arrives alone', stripPatchBlock('Done. <patch_text id="1">\nabc') === 'Done.');
+  const missing = parsePatchBlock('<playbook_patch>{"ops":[{"op":"source.append","text":{"block":2}}]}</playbook_patch>');
+  ok('a missing text block leaves the change incomplete', !run(missing.ops).results[0].ok);
+}
+
+// ---------- which ops Cube may propose ----------
+{
+  ok('job.remove is refused', !!modelOpProblem({ op: 'job.remove', job: 'S4' }, base));
+  ok('phase.remove is refused', !!modelOpProblem({ op: 'phase.remove', index: 0 }, base));
+  ok('source.set is refused', !!modelOpProblem({ op: 'source.set', value: '' }, base));
+  ok('unknown op is refused', !!modelOpProblem({ op: 'job.explode' }, base));
+  ok('job.set when is allowed', modelOpProblem({ op: 'job.set', job: 'S4', field: 'when', value: 'x' }, base) === null);
+  const gaps = job(base, 'S4').body.gaps ?? [];
+  ok('clearing a list is allowed', modelOpProblem({ op: 'job.set', job: 'S4', field: 'gaps', value: [] }, base) === null);
+  if (gaps.length > 1)
+    ok('reordering a list is allowed', modelOpProblem({ op: 'job.set', job: 'S4', field: 'gaps', value: [...gaps].reverse() }, base) === null);
+  ok('rewriting a list is refused', !!modelOpProblem({ op: 'job.set', job: 'S4', field: 'gaps', value: [...gaps, 'new'] }, base));
+
+  const p = sanitizePatch(
+    {
+      summary: 's',
+      question: '',
+      ops: [{ op: 'job.set', job: 'S4', field: 'when', value: 'x' }, { op: 'job.remove', job: 'S4' }, 'junk'],
+      contradictions: [{ topic: 'Hours', existing: 'a', incoming: 'b', source: 'f.docx' }, { topic: '' }, 7],
+    },
+    base
+  );
+  ok('sanitize keeps allowed ops', p.ops.length === 1 && p.ops[0].op === 'job.set');
+  ok('sanitize lists refused ops with a reason', p.refused.length === 2 && p.refused.every((r) => r.reason));
+  ok('sanitize keeps only well-formed contradictions', p.contradictions.length === 1);
+  ok('an empty question becomes null', p.question === null);
+  ok('sanitize of a non-object is null', sanitizePatch([], base) === null);
+}
+
+// ---------- chunking and overlaps ----------
+{
+  const para = 'Lorem ipsum dolor sit amet. '.repeat(40); // about 1,100 characters
+  const big = Array.from({ length: 12 }, (_, i) => `## Section ${i + 1}\n\n${para}\n\n${para}`).join('\n');
+  const pieces = splitText(big, 5000);
+  ok('splitText keeps pieces under the limit', pieces.every((x) => x.length <= 5000));
+  ok('splitText loses no text', pieces.join('').replace(/\s/g, '') === big.replace(/\s/g, ''));
+  ok('splitText splits at headings', pieces.every((x) => x.startsWith('## Section')));
+  const noBreaks = 'x'.repeat(12000);
+  const hard = splitText(noBreaks, 5000);
+  ok('splitText hard-splits text with no breaks', hard.every((x) => x.length <= 5000) && hard.join('') === noBreaks);
+  const chunks = chunkFiles([{ name: 'a.md', text: big }, { name: 'small.txt', text: 'tiny' }], 5000);
+  ok('chunkFiles keeps each part under the limit', chunks.every((c) => c.reduce((n, f) => n + f.text.length, 0) <= 5000));
+  ok('chunkFiles names split pieces', chunks[0][0].name.startsWith('a.md (part 1 of '));
+  ok('small files share a part', chunkFiles([{ name: '1', text: 'a' }, { name: '2', text: 'b' }], 5000).length === 1);
+  const ops = [
+    { op: 'job.set', job: 'S4', field: 'when', value: 'a' },
+    { op: 'job.append', job: 'S4', field: 'gaps', item: 'g' },
+    { op: 'job.set', job: 'S4', field: 'when', value: 'b' },
+  ];
+  const ov = overlappingOps(ops, [0, 0, 1]);
+  ok('overlaps flag the same target from two parts', ov.length === 2 && ov.includes(0) && ov.includes(2));
+  const eleven = Array.from({ length: 11 }, (_, i) => ({ name: 'n' + i, text: 'x' }));
+  ok('at most 10 files per part', chunkFiles(eleven, 5000).every((c) => c.length <= 10) && chunkFiles(eleven, 5000).length === 2);
+  ok('no overlaps within one part', overlappingOps(ops, [0, 0, 0]).length === 0);
+}
+
+// ---------- source document size ----------
+{
+  ok('a normal edit passes the size check', checkSize(base, run([{ op: 'source.append', text: 'More.' }]).next).length === 0);
+  const huge = run([{ op: 'source.append', text: 'x'.repeat(400_000) }]).next;
+  ok('growing past the budget is blocked', checkSize(base, huge).length === 1);
+  ok('shrinking an over-budget document is allowed', checkSize(huge, run([{ op: 'source.set', value: 'x'.repeat(410_000) }]).next).length === 0 && checkSize(huge, base).length === 0);
+}
 
 console.log(`\n${pass} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

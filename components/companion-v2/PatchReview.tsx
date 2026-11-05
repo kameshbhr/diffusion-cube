@@ -3,16 +3,12 @@
 import { useMemo, useState } from 'react';
 import { diffLines, diffWords, type Change } from 'diff';
 import { createClient } from '@/lib/supabase/client';
-import { applyOps, checkGuards, checkWarnings, isEmptySave, toSave, type OpResult, type PatchOp, type Snapshot } from '@/lib/companion-v2/patch';
+import { applyOps, checkGuards, checkSize, checkWarnings, isEmptySave, toSave, type OpResult, type PatchOp, type Snapshot } from '@/lib/companion-v2/patch';
 import { beforeAfter, editableKey, opLabel } from '@/lib/companion-v2/patch-display';
 import { savePlaybook } from '@/lib/companion-v2/save';
+import type { Contradiction } from '@/lib/companion-v2/playbook-patch';
 
-export interface Contradiction {
-  topic: string;
-  existing: string;
-  incoming: string;
-  source?: string;
-}
+export type { Contradiction };
 
 interface Props {
   playbookId: string;
@@ -27,6 +23,12 @@ interface Props {
   onApplied: (newUpdatedAt: string, applied: PatchOp[]) => void;
   onDiscard: () => void;
   discardLabel?: string;
+  /** Apply waits (e.g. while the page reloads after another save). */
+  disabled?: boolean;
+  /** Replaces the full-page reload after a stale save (e.g. a refresh that keeps the chat). */
+  onReload?: () => void;
+  /** Indexes of ops that another part of a large upload also changes. */
+  overlaps?: number[];
 }
 
 const CONTEXT_LINES = 3;
@@ -108,6 +110,9 @@ export default function PatchReview({
   onApplied,
   onDiscard,
   discardLabel = 'Discard',
+  disabled = false,
+  overlaps = [],
+  onReload,
 }: Props) {
   const [include, setInclude] = useState<boolean[]>(() => ops.map(() => true));
   const [edits, setEdits] = useState<Record<number, string>>({});
@@ -157,7 +162,7 @@ export default function PatchReview({
       perOp: cards.map((c) => c.result),
       applied,
       save: toSave(base, s),
-      guards: checkGuards(s),
+      guards: [...checkGuards(s), ...checkSize(base, s)],
       warnings: checkWarnings(base, s),
     };
   }, [base, effective, include]);
@@ -251,6 +256,11 @@ export default function PatchReview({
                 />
               )}
 
+              {overlaps.includes(i) && (
+                <p className="mt-2 rounded-md bg-pb-thin-bg px-3 py-1.5 text-xs text-pb-thin-ink">
+                  Another part of the files also changes this. Changes apply in order, so a later one may replace this one.
+                </p>
+              )}
               {eff.parseError && <p className="mt-2 text-sm text-pb-check-ink">{eff.parseError}</p>}
               {include[i] && result && !result.ok && <p className="mt-2 text-sm text-pb-check-ink">{result.error}</p>}
             </li>
@@ -272,8 +282,8 @@ export default function PatchReview({
         <div role="alert" className="rounded-md bg-pb-check-bg px-3 py-2 text-sm text-pb-check-ink">
           <p>{saveError}</p>
           {stale && (
-            <button type="button" onClick={() => window.location.reload()} className="mt-1.5 font-medium underline underline-offset-2">
-              Reload now (your unsaved changes here are lost)
+            <button type="button" onClick={() => (onReload ? onReload() : window.location.reload())} className="mt-1.5 font-medium underline underline-offset-2">
+              {onReload ? 'Load the latest playbook, then apply again' : 'Reload now (your unsaved changes here are lost)'}
             </button>
           )}
         </div>
@@ -283,7 +293,7 @@ export default function PatchReview({
         <button
           type="button"
           onClick={apply}
-          disabled={blocked || saving}
+          disabled={blocked || saving || disabled}
           className="rounded-lg bg-pb-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-40"
         >
           {saving ? 'Applying…' : applicable === ops.length ? 'Apply' : `Apply ${applicable} of ${ops.length}`}

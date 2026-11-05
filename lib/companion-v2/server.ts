@@ -10,6 +10,8 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { hasAnyRole, isAdmin } from '@/lib/roles';
+import type { JobRow, PlaybookRow } from './types';
+import type { Snapshot } from './patch';
 
 export interface PlaybookSummary {
   id: string;
@@ -92,6 +94,43 @@ export const getWorkspace = cache(async (slug: string) => {
     return (data as Membership | null) ?? null;
   }
 });
+
+/** The whole playbook and its jobs in sequence order (contributor screens). */
+export async function loadPlaybookContent(playbookId: string): Promise<{ playbook: PlaybookRow; jobs: JobRow[] }> {
+  const { supabase } = await getViewer();
+  const [{ data: playbook, error }, { data: jobRows, error: jobsError }] = await Promise.all([
+    supabase
+      .from('playbooks')
+      .select('id, slug, title, description, overview, roles, sequence, source_doc, updated_at')
+      .eq('id', playbookId)
+      .single(),
+    supabase
+      .from('playbook_jobs')
+      .select('job_code, name, position, stages, work_area, job_type, body')
+      .eq('playbook_id', playbookId),
+  ]);
+  if (error) throw error;
+  if (jobsError) throw jobsError;
+  const jobs = ((jobRows ?? []) as JobRow[]).sort(
+    (a, b) => (a.position ?? 1e9) - (b.position ?? 1e9) || a.job_code.localeCompare(b.job_code, 'en', { numeric: true })
+  );
+  return { playbook: playbook as PlaybookRow, jobs };
+}
+
+/** The snapshot the patch functions work on. */
+export function toSnapshot(playbook: PlaybookRow, jobs: JobRow[]): Snapshot {
+  return {
+    playbook: {
+      title: playbook.title,
+      description: playbook.description,
+      overview: playbook.overview ?? {},
+      roles: playbook.roles ?? [],
+      sequence: playbook.sequence ?? {},
+      source_doc: playbook.source_doc ?? '',
+    },
+    jobs,
+  };
+}
 
 /** For contributor-only pages: 404 for everyone else. */
 export async function requireContributor(slug: string) {

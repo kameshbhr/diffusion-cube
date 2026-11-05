@@ -302,6 +302,14 @@ The reply ends with:
 
 A heading op fails, rather than guessing, when the heading is missing or appears more than once.
 
+Decided in Slice 4d:
+- **Long text travels outside the JSON.** In a live test, Cube's markdown for a section rewrite contained quotation marks that broke the JSON. Any op value may now be `{"block":N}`, with the text after the patch block in `<patch_text id="N">…</patch_text>`, so markdown needs no escaping. The client fills the blocks in before review; a missing block makes that change fail visibly.
+- **Cube sees the playbook as its exact canonical JSON** (the same serializer as the download), not the adopters' rendered markdown, so field names, list positions and `expect` texts match what the ops use.
+- **Ops Cube may not propose** (`job.remove`, `phase.remove`, `source.set`) are dropped and listed under the reply as "Not offered here" with the reason. A whole-list `job.set` on `how_summary`, `gaps` or `tasks` is refused unless it clears or reorders the list.
+- **`source.set`** (the whole document) exists only for the Source document editor.
+- **Budgets.** Every diff screen blocks a change that grows the source document past 100k tokens (estimated at 4 characters per token); a document already over it can still shrink. Each upload part holds at most 120k characters and 10 files. The history sent to Cube is cut to about 40k tokens, so the whole request stays inside the model's context; if it still doesn't fit, the contributor is told to start over or upload less. File text is only in the turn it was attached to, so Cube asks for it again rather than "continuing" from memory. Leaving the screen stops a reply and any upload parts not yet sent.
+- The three "Edit…" chips send their text to Cube, which asks one question about what to change. "Update from files" opens the file picker.
+
 The contributor prompt tells Cube which op to prefer: item ops for list fields, section ops for anything larger than a sentence in the source document, and `find`/`replace` only for small edits.
 
 ### Applying a patch
