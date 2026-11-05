@@ -1,0 +1,3494 @@
+{
+  "version": 1,
+  "slug": "low-resource-language",
+  "title": "Low-resource language AI adoption",
+  "description": "For a district or state champion bringing a tribal or low-resource language onto India’s language AI infrastructure. Built on the Pathway Model: where it applies, what it enables, the jobs to do, insights across them, and how proven it is.",
+  "overview": {
+    "purpose": [
+      {
+        "label": "What it is for",
+        "value": "To help a state, district, university or NGO that already has local administrative backing bring a low-resource or tribal language onto India’s language AI infrastructure, drawing on the experience of bringing Bhili to the AI map in Nandurbar."
+      },
+      {
+        "label": "The problem",
+        "value": "Government services, health information, agricultural advisories, legal aid and education platforms are built mostly for the dominant scheduled languages, so tribal and indigenous communities are effectively excluded from digital governance. Infrastructure gets built where training data exists, and data gets built where communities are literate, connected and economically active, so the gap persists. There is no commercial case for a private developer to close it."
+      },
+      {
+        "label": "Why voice AI",
+        "value": "Speech needs no literacy, device fluency or familiarity with administrative language. A citizen who cannot write her name can still describe a problem and understand a response, if the service speaks her language."
+      },
+      {
+        "label": "Use cases",
+        "items": [
+          "A crop advisory line or agricultural IVR, queried by voice with a voice reply in the same language",
+          "A frontline health worker’s tool, for example an ASHA worker explaining a protocol",
+          "A government helpline",
+          "A first keyword-spotting model for 20–30 priority terms, such as health service names, scheme names, crop names or emergency phrases"
+        ]
+      },
+      {
+        "label": "Who benefits",
+        "value": "The farmer, the frontline health worker, the elder or low-literacy citizen, and the contributors who are paid for recording."
+      },
+      {
+        "label": "Who it is for",
+        "value": "A District Collector, a Secretary, or a program lead at an institution that has decided to champion a language: capable people who are short on time."
+      }
+    ],
+    "context": [
+      {
+        "label": "Sector",
+        "value": "Public services: government schemes, health information, agricultural advisories, legal aid and education."
+      },
+      {
+        "label": "People served",
+        "value": "Tribal and indigenous language communities excluded from digital governance, especially women, elders and low-literacy citizens."
+      },
+      {
+        "label": "Geography",
+        "value": "India. The reference is Bhili in Nandurbar, Maharashtra. The language has no standard script of its own."
+      },
+      {
+        "label": "Organisational capacity",
+        "value": "Local administrative backing already in place; a champion who meets four criteria; an institutional anchor committed for 2–3 years; a full-time Nodal Officer."
+      },
+      {
+        "label": "Existing infrastructure",
+        "value": "India’s language AI infrastructure: Bhashini, ULCA, AI4Bharat’s tools, State Data Centres. A real government service that can deploy the outcome."
+      },
+      {
+        "label": "Regulatory environment",
+        "value": "Consent and data-protection compliance under the DPDP Act. Open release under CC BY 4.0 or equivalent."
+      },
+      {
+        "label": "Scale",
+        "value": "Reference language with a 10–20 lakh speaker base and no production-grade dataset. Cost rises as speakers fall and falls as they rise."
+      },
+      {
+        "label": "Resources",
+        "value": "₹84 lakh to ₹1 crore for foundation-building. Data collection of 9+ months under normal conditions."
+      }
+    ],
+    "based_on": [
+      {
+        "label": "Adoptions drawn on",
+        "items": [
+          "Project Astitva, Bhili, Nandurbar (Maharashtra): the reference implementation, with the District Collector as champion, Karya for data collection and AI4Bharat as technical partner.",
+          "Mission BAANI, Assam: named as a source. No detail on its language, approach or results is given."
+        ]
+      },
+      {
+        "label": "Deployment reference",
+        "value": "MahaVISTAAR and POCRA (Maharashtra State Agriculture Department), the live service used as the reference for an application owner."
+      },
+      {
+        "label": "Methodology",
+        "value": "AI4Bharat’s published methodology, which the timeline steps and data volume tiers follow."
+      },
+      {
+        "label": "Convenings",
+        "value": "A workshop for District Collectors (MahaPMU) and several convenings with people and institutions working on low-resource languages."
+      },
+      {
+        "label": "DC meeting checklist",
+        "value": "The MahaPMU checklist: the stage sequence and timings, each job’s checklist items, and the PMU role tags."
+      },
+      {
+        "label": "Not recorded",
+        "value": "Which job or insight came from which adoption."
+      }
+    ],
+    "outcomes": [
+      "People who speak the language can use government services by voice in their own language, without needing to read, type or use the administrative language.",
+      "A public language dataset and model that other researchers, departments and states can build on without renegotiating access.",
+      "Paid work for contributors from the language community, with the money staying in the district.",
+      "Each recording session also preserves spoken knowledge held by elderly speakers, although livelihood motivates participation more than preservation does.",
+      "Reported results from a completed run: not stated. The milestones in the Sequence tab are targets."
+    ],
+    "insights": [
+      "The champion convenes, funds and provides continuity, and experts make the domain decisions: script, dialect, quality thresholds and model architecture. The champion’s role is closer to a midwife’s than an owner’s: facilitate, then step back.",
+      "The community is the centre of the effort, not a stakeholder at the edge. Livelihood and seeing real results in their own language motivate more than a preservation appeal.",
+      "Real use is the test. A model that performs well in controlled conditions can still underperform on real dialects and noise, so field testing and acceptance by the deploying department stay part of the process.",
+      "The project should not depend on any one person. A Nodal Officer appointed to a post, and a formal written order issued by the champion, let it continue through a transfer: a written order survives a change in priorities, and a verbal agreement rarely does."
+    ],
+    "maturity_flags": [
+      {
+        "label": "Estimate",
+        "value": "The champion’s weekly hours, the one-week fine-tuning duration and the integration duration. These are informed estimates, not documented from a project."
+      },
+      {
+        "label": "Needs check",
+        "value": "The cost table is not reconciled with the AI4Bharat per-hour estimate. The volume table is an image and its figures were not captured here. The budget’s read-speech hours differ from the stated mix. The DC checklist gives different figures for the telephony share, the minimum volume and the studio hours per speaker; both sets are shown."
+      },
+      {
+        "label": "Thin",
+        "value": "Maintenance after launch, uptake, succession, funding routes, and end-user impact measurement."
+      },
+      {
+        "label": "Open",
+        "value": "Sections drawn from a single source or a single district’s experience still need validation by a wider ecosystem."
+      },
+      {
+        "label": "Needs check: PMU tags",
+        "value": "The PMU tags come from the DC meeting checklist (MahaPMU). A job is tagged Owns where the checklist names PxD, PMU, Quality PMU or the Nodal Officer’s team as owner. The Nodal Officer is a separate role, so jobs the Nodal Officer owns are tagged Tracks. Several Owns tags rest on one checklist item inside a larger job; the note on each job says which. Tracks means another role owns the job and PMU follows it."
+      }
+    ],
+    "credits": [
+      {
+        "label": "Created by",
+        "value": "EkStep Foundation, 2026. Drawn on Project Astitva and Mission BAANI, both associated with EkStep Foundation."
+      },
+      {
+        "label": "Licence",
+        "value": "Creative Commons Attribution 4.0 International (CC BY 4.0). Suggested credit: “Low-Resource Language AI Adoption Package for India,” EkStep Foundation."
+      },
+      {
+        "label": "Acknowledged contributors",
+        "items": [
+          "Santosh Kevlani, EkStep Foundation",
+          "Mitesh M. Khapra, AI4Bharat, IIT Madras",
+          "Mitali Sethi, IAS, District Collector, champion of Project Astitva (Nandurbar, Bhili)",
+          "PxD (Precision Development) and team: steering committee role, MahaPMU workshop",
+          "BalaKrishnan A and Vanashree Nair: reviewers from EkStep and COSS",
+          "AI4Bharat, IIT Madras: technical partner for model building and benchmarking (Shoonya, IndicTrans2, IndicASR, IndicTTS)",
+          "Bhashini and Digital India NLTM: national hosting platform and the ULCA open data repository",
+          "Karya: data collection platform, Nandurbar reference implementation",
+          "State Tribal Research Institutes (Pune, Vadodara, Bhopal, Mysuru, Ranchi, Bhubaneswar and others)",
+          "MahaVISTAAR and the Maharashtra State Agriculture Department, POCRA: deployment reference",
+          "Government of NCT of Delhi and other district and state administration partners",
+          "Gates Foundation: funder audience and reference point for diligence framing"
+        ],
+        "note": "Listed in no particular order. Being listed reflects contribution to the underlying work and does not make anyone an author or co-owner."
+      },
+      {
+        "label": "Feedback",
+        "value": "This is a working document. Comments, corrections and additional contributors are welcome, especially on the thin sections and those that rest on a single source or district."
+      }
+    ]
+  },
+  "roles": [
+    {
+      "name": "Champion",
+      "group": "Governance and delivery",
+      "description": "Convenes, funds and provides continuity, enabling decisions rather than making them. Meets four criteria: alignment of care, direct influence, power to convene and mobilise resources, and local community respect.",
+      "example": "E.g. a District Collector, the Secretary of the Department of Tribal Affairs, a Chief Secretary or an Agriculture Secretary.",
+      "see": "",
+      "owner_keys": [
+        "District Collector"
+      ],
+      "playbook_names": [
+        "Champion"
+      ]
+    },
+    {
+      "name": "Nodal Officer",
+      "group": "Governance and delivery",
+      "description": "Leads the PMU and coordinates the effort day to day. Appointed to a post, not a person, so the project survives a transfer. A full-time officer is assumed.",
+      "example": "",
+      "see": "",
+      "owner_keys": [
+        "Nodal Officer"
+      ],
+      "playbook_names": [
+        "Nodal Officer"
+      ]
+    },
+    {
+      "name": "Steering Committee",
+      "group": "Governance and delivery",
+      "description": "Cross-department authority. Approves budget and direction. Reviews quarterly. In the checklist it also reviews vendor proposals on cost items, and the vendor’s work plan before the language survey starts.",
+      "example": "",
+      "see": "",
+      "owner_keys": [
+        "Steering Committee"
+      ],
+      "playbook_names": [
+        "Steering Committee"
+      ]
+    },
+    {
+      "name": "Project Management Unit (PMU)",
+      "group": "Governance and delivery",
+      "description": "The Nodal Officer’s team of execution. Coordinates the work day to day, gathers existing community resources, drafts the scope document with the Ecosystem Orchestrator, runs the weekly review and coordinates vendors once contracted. Two arms kept independent of each other. Management arm: procurement, vendor management, reporting. Quality arm: validation standards, sign-off. The checklist calls the Quality arm “Quality PMU”.",
+      "example": "",
+      "see": "",
+      "owner_keys": [
+        "PMU"
+      ],
+      "playbook_names": [
+        "PMU"
+      ]
+    },
+    {
+      "name": "District / Local Administration",
+      "group": "Governance and delivery",
+      "description": "Convenes, funds and champions the effort.",
+      "example": "",
+      "see": "",
+      "owner_keys": [
+        "DC’s Office"
+      ],
+      "playbook_names": [
+        "District / Local Administration"
+      ]
+    },
+    {
+      "name": "District-Level Line Departments",
+      "group": "Governance and delivery",
+      "description": "Hold the ground and provide continuity between phases.",
+      "example": "Agriculture, Education, Health, Tribal Welfare.",
+      "see": "",
+      "owner_keys": [
+        "Department of Agriculture"
+      ],
+      "playbook_names": [
+        "District-Level Line Departments"
+      ]
+    },
+    {
+      "name": "Line Secretary",
+      "group": "Governance and delivery",
+      "description": "Reviews monthly: progress, outcomes and priorities across all district language projects.",
+      "example": "",
+      "see": "",
+      "owner_keys": [
+        "Line Secretary"
+      ],
+      "playbook_names": [
+        "Line Secretary"
+      ]
+    },
+    {
+      "name": "Core Application Owner",
+      "group": "Governance and delivery",
+      "description": "Deploys the outcome through a real, live service. Owns fine-tuning and upkeep.",
+      "example": "E.g. State Agriculture Department (MahaVISTAAR, POCRA).",
+      "see": "",
+      "owner_keys": [
+        "Core Application Owner"
+      ],
+      "playbook_names": [
+        "Core Application Owner"
+      ]
+    },
+    {
+      "name": "Ecosystem Orchestrator",
+      "group": "Governance and delivery",
+      "description": "Leads orchestration across the whole ecosystem. A neutral party with no vendor stake. Also called the orchestrating partner.",
+      "example": "E.g. PxD or an EkStep Foundation equivalent.",
+      "see": "In the DC checklist, PxD acts as the Ecosystem Orchestrator, so its items count as PMU’s.",
+      "owner_keys": [],
+      "playbook_names": [
+        "Ecosystem Orchestrator"
+      ]
+    },
+    {
+      "name": "Central Program Office",
+      "group": "Governance and delivery",
+      "description": "Sets the transcription guidelines, metadata schema and quality bar, applied uniformly across every field team.",
+      "example": "",
+      "see": "",
+      "owner_keys": [],
+      "playbook_names": [
+        "Central Program Office"
+      ]
+    },
+    {
+      "name": "Linguistic Expert",
+      "group": "Community",
+      "description": "Validates content and resolves dialect and language questions. With community members, decides script and dialect.",
+      "example": "",
+      "see": "",
+      "owner_keys": [
+        "Linguistic Expert"
+      ],
+      "playbook_names": [
+        "Linguistic Expert"
+      ]
+    },
+    {
+      "name": "Community Heads",
+      "group": "Community",
+      "description": "Local community heads and influencing members. Legitimise the effort and mobilise participation. The centre of the ecosystem, not a stakeholder at the edge.",
+      "example": "",
+      "see": "",
+      "owner_keys": [],
+      "playbook_names": [
+        "Community Heads"
+      ]
+    },
+    {
+      "name": "Community Contributors",
+      "group": "Community",
+      "description": "Create, validate and own the language. Includes Audio Contributors, who record the raw data, and Voice Artists, who record professional-quality voice in studio settings.",
+      "example": "Use any community-led radio station if one exists.",
+      "see": "",
+      "owner_keys": [],
+      "playbook_names": [
+        "Community Contributors",
+        "Audio Contributor"
+      ]
+    },
+    {
+      "name": "Data Collection Agency",
+      "group": "External vendors",
+      "description": "Field data collection, transcription, platform and task management, first-pass validation. Final validation sign-off and model building are out of scope.",
+      "example": "E.g. Karya, JoshTalks, Shoonya-integrated vendors, BhashaDaan (volunteer channel).",
+      "see": "",
+      "owner_keys": [
+        "Data Collection Agency"
+      ],
+      "playbook_names": [
+        "Data Collection Agency"
+      ]
+    },
+    {
+      "name": "Technical Partner",
+      "group": "External vendors",
+      "description": "Trains, benchmarks and maintains the models, including retraining cycles, and reports collection misses. Also called the Technical / Model-Building Partner or Model Builder. Field collection, community convening and deployment ownership are out of scope.",
+      "example": "E.g. AI4Bharat, IIT Madras.",
+      "see": "",
+      "owner_keys": [
+        "Technical Partner"
+      ],
+      "playbook_names": [
+        "Technical Partner"
+      ]
+    },
+    {
+      "name": "Model Hoster",
+      "group": "External vendors",
+      "description": "Sovereign, publicly accessible hosting, with API and service availability. Also called the Model Hosting Platform. Model quality decisions, data collection and annotation are out of scope.",
+      "example": "E.g. Bhashini, State Data Centres.",
+      "see": "",
+      "owner_keys": [
+        "Model Hoster"
+      ],
+      "playbook_names": [
+        "Model Hoster"
+      ]
+    },
+    {
+      "name": "Transcriber / Translator",
+      "group": "Review and testing",
+      "description": "Converts raw recordings into transcribed and translated text.",
+      "example": "",
+      "see": "",
+      "owner_keys": [],
+      "playbook_names": [
+        "Transcriber",
+        "Translator"
+      ]
+    },
+    {
+      "name": "Validator",
+      "group": "Review and testing",
+      "description": "Checks transcriptions and translations for accuracy and fluency. Joins once collection begins.",
+      "example": "",
+      "see": "",
+      "owner_keys": [],
+      "playbook_names": [
+        "Validator"
+      ]
+    },
+    {
+      "name": "Super Reviewer",
+      "group": "Review and testing",
+      "description": "Audits Validator output. Accountable for the dataset’s language purity. Independent: appointed by the government on a contract separate from the collection agency’s.",
+      "example": "E.g. a university linguist, a State Tribal Research Institute or a credentialed expert.",
+      "see": "",
+      "owner_keys": [
+        "Super Reviewer"
+      ],
+      "playbook_names": [
+        "Super Reviewer"
+      ]
+    },
+    {
+      "name": "Field Testers",
+      "group": "Review and testing",
+      "description": "Briefed on the testing protocol and need not understand the model. Ask simple everyday questions and judge whether the system understands them and responds clearly.",
+      "example": "",
+      "see": "",
+      "owner_keys": [
+        "Field Testers"
+      ],
+      "playbook_names": [
+        "Field Testers"
+      ]
+    },
+    {
+      "name": "Engineering Teams",
+      "group": "Review and testing",
+      "description": "Evaluate technical performance and analyse issues found in field testing.",
+      "example": "",
+      "see": "",
+      "owner_keys": [
+        "Engineering Teams"
+      ],
+      "playbook_names": [
+        "Engineering Teams"
+      ]
+    },
+    {
+      "name": "Subject Matter Experts",
+      "group": "Review and testing",
+      "description": "Domain experts, for example in agriculture and health. Identified to review content, and they rate expert-evaluation queries for correctness, clarity, safety and local relevance.",
+      "example": "",
+      "see": "",
+      "owner_keys": [],
+      "playbook_names": []
+    },
+    {
+      "name": "Independent Third Party",
+      "group": "Review and testing",
+      "description": "Judges whether the deployed service is acceptable, standing apart from the vendor whose model is evaluated. Called the Independent Evaluator in the checklist.",
+      "example": "",
+      "see": "",
+      "owner_keys": [
+        "Independent Third Party"
+      ],
+      "playbook_names": [
+        "Independent Third Party"
+      ]
+    }
+  ],
+  "sequence": {
+    "phases": [
+      {
+        "name": "Readiness",
+        "when": "Before you start",
+        "text": "A “No” on any readiness item is a task to complete, not a disqualifier. Check which datasets already exist in the community before initiating the project. Foundation-building for one language spans roughly 6–9 months of active effort.",
+        "jobs": [
+          "I1",
+          "E2",
+          "E3",
+          "S1",
+          "P3",
+          "P4"
+        ]
+      },
+      {
+        "name": "Stage 0: Readiness and language confirmation",
+        "when": "Week 1",
+        "text": "Confirm the target language and an institutional anchor in writing, fill out the one-page Language Profile, and record the decision in an internal e-Office note. Done when the DC has confirmed the language and dialect starting point in writing.",
+        "jobs": [
+          "P2",
+          "I1",
+          "P1"
+        ]
+      },
+      {
+        "name": "Stage 1: Team mobilisation and departmental order",
+        "when": "Weeks 1–2",
+        "text": "Nominate the Nodal Officer by post, set up one coordination channel, issue the departmental order that sets up the review mechanism, and begin identifying a Linguistic Expert, contributors and a Reviewer. Done when the order is issued and circulated and the Nodal Officer has begun onboarding the team.",
+        "jobs": [
+          "I2",
+          "I3",
+          "I6",
+          "S4"
+        ]
+      },
+      {
+        "name": "Stage 2: Community engagement and script and dialect decision",
+        "when": "Weeks 2–4",
+        "text": "The DC convenes the first community meeting in person, and three to four meetings are budgeted. Existing resources are collected and the Linguistic Expert makes the documented script and dialect call. Done when the decision is confirmed in writing and the first meeting is complete.",
+        "jobs": [
+          "E1",
+          "P2",
+          "S1"
+        ]
+      },
+      {
+        "name": "Stage 3: Scope definition, vendor selection and work order",
+        "when": "Weeks 4–6",
+        "text": "Write the scope document with the technical specification, convert it into an RFP-equivalent, review proposals with the Steering Committee and sign the Work Order. Do not contract the vendor before the deployment owner and community leadership are in the room. Done when the Work Order is signed and the vendor’s work plan is cleared.",
+        "jobs": [
+          "I4",
+          "S4",
+          "E4",
+          "I5",
+          "E2",
+          "S3"
+        ]
+      },
+      {
+        "name": "Stage 4: Language survey",
+        "when": "1–2 months",
+        "text": "Secondary research, mapping existing datasets and audio, field-verifying dialect boundaries, and a survey report. Settle script disputes first and do not run the survey alongside an open one. Done when the report is accepted and no script dispute remains.",
+        "jobs": [
+          "P1",
+          "S1"
+        ]
+      },
+      {
+        "name": "Stage 5: Standards creation",
+        "when": "1–2 months",
+        "text": "Agree the orthography policy, annotation guidelines and metadata schema, and fix the quality bar against WER, BLEU and MOS. Slow institutional sign-off is the usual delay, so chase it directly. Done when the Technical Partner and Linguistic Expert have signed off the standards document.",
+        "jobs": [
+          "S5",
+          "P5"
+        ]
+      },
+      {
+        "name": "Stage 6: Pilot collection",
+        "when": "About 1 month",
+        "text": "Register an initial contributor pool, take informed consent, collect a small trial batch, validate it and audit a sample. Do not compress the pilot to hit a date. Done when the Super Reviewer confirms the batch meets the quality bar and the Nodal Officer confirms the pool and protocol are ready to scale.",
+        "jobs": [
+          "E6",
+          "S6",
+          "S7",
+          "S9"
+        ]
+      },
+      {
+        "name": "Stage 7: Full collection, annotation and validation",
+        "when": "6–9 months, in 2–3 rounds",
+        "text": "Record at scale, move data through the validation chain, track progress and quality separately every week, and run the weekly, fortnightly and monthly reviews. Each round: collect, transcribe, validate, fine-tune, test. The first keyword-spotting model should be shared in months 2–3. Done at Gate 1, when the Super Reviewer confirms the full dataset has passed the chain.",
+        "jobs": [
+          "S7",
+          "E6",
+          "S8",
+          "S9",
+          "P6",
+          "I5",
+          "I7",
+          "E8",
+          "E7",
+          "S10",
+          "I6",
+          "I8",
+          "E5",
+          "S2",
+          "I9"
+        ]
+      },
+      {
+        "name": "Stage 8: Model building and benchmarking",
+        "when": "After Gate 1; about 1 week per fine-tuning cycle",
+        "text": "Train the models, benchmark them against WER, BLEU and MOS, feed collection gaps back, and fine-tune after every new round of data. Done at Gate 2, audited by the Quality PMU.",
+        "jobs": [
+          "S10",
+          "P5",
+          "I8",
+          "P6"
+        ]
+      },
+      {
+        "name": "Stage 9: Hosting and open release",
+        "when": "After Gate 2",
+        "text": "Receive the model and dataset, release both under CC BY 4.0 or equivalent, and confirm API and service availability. Done when hosting is live and the open licence is recorded.",
+        "jobs": [
+          "S11",
+          "E9"
+        ]
+      },
+      {
+        "name": "Stage 10: Application integration and field testing",
+        "when": "About 2 weeks, one time",
+        "text": "Integrate the model into the live service and run a field-testing phase with field testers, language experts and engineers. Done when issues are addressed, or deferred with a stated reason.",
+        "jobs": [
+          "S12",
+          "S13"
+        ]
+      },
+      {
+        "name": "Stage 11: Use-case acceptance and sign-off",
+        "when": "Repeats every cycle",
+        "text": "Run about a hundred real test interactions, ideally judged by an independent evaluator, and move to full deployment on a passed acceptance test. Done after two complete Gate 3 feedback cycles.",
+        "jobs": [
+          "S13",
+          "I8"
+        ]
+      },
+      {
+        "name": "Stage 12: Sustaining",
+        "when": "Ongoing, no exit",
+        "text": "Write every non-delegable action into the departmental order, keep the dataset and model openly released, keep the playbook current, and continue the review cadence and quality checks. A project still dependent on its champion’s daily involvement has fallen short of done.",
+        "jobs": [
+          "I10",
+          "E10",
+          "S14",
+          "P6"
+        ]
+      }
+    ],
+    "rules": [
+      {
+        "rule": "A committed deployment application before any data collection starts.",
+        "why": "The one non-negotiable gate. Models get trained and go unused otherwise."
+      },
+      {
+        "rule": "Community leadership and the application owner in the room before a data collection vendor is contracted.",
+        "why": "Contracting collection first and looking for a deployment owner later is a documented failure."
+      },
+      {
+        "rule": "Nominate the Nodal Officer before anything else is delegated.",
+        "why": "Everything routes through the appointment."
+      },
+      {
+        "rule": "Issue the review order in week one and lock the cadence from day one.",
+        "why": "A written order survives a transfer. A verbal agreement rarely does."
+      },
+      {
+        "rule": "Bring validators in once collection formally starts.",
+        "why": "They become relevant at that point."
+      },
+      {
+        "rule": "Review each work order with the Steering Committee before the next stage proceeds.",
+        "why": ""
+      },
+      {
+        "rule": "Integrate the application once, after the first model-building cycle.",
+        "why": "Later model updates flow through the same pipeline."
+      },
+      {
+        "rule": "Insist on open data standards and ULCA-compatible exports from day one.",
+        "why": "Avoids vendor lock-in."
+      },
+      {
+        "rule": "Check which datasets already exist in the community before initiating the project.",
+        "why": "Avoids collecting what is already there. The DC can check the community’s resources first."
+      },
+      {
+        "rule": "Settle script disputes before starting the language survey.",
+        "why": "The survey commonly slips when a dispute carries over from the community meetings."
+      },
+      {
+        "rule": "Budget three to four community meetings, and do not compress them or the pilot to hit a date.",
+        "why": "Rushed community trust-building is the single most common cause of later delay."
+      },
+      {
+        "rule": "Hold a dedicated proposal walkthrough before finalising a vendor.",
+        "why": "Cost assumptions get checked, not accepted on trust."
+      }
+    ],
+    "framework": {
+      "not_stated": "Not stated",
+      "stages": [
+        {
+          "name": "Explore",
+          "info": "Set purpose, goals and use cases. Ends with a decision on what to pursue."
+        },
+        {
+          "name": "Define",
+          "info": "Understand the use case in detail and get ready for real-world testing."
+        },
+        {
+          "name": "Pilot",
+          "info": "Build, test and improve in real conditions. Ends with a decision to scale, change or stop."
+        },
+        {
+          "name": "Scale",
+          "info": "Expand and sustain in regular use while continuing to improve."
+        }
+      ],
+      "areas": [
+        {
+          "name": "People and Problem",
+          "info": "People served, needs, purpose, goals, use cases, outcomes"
+        },
+        {
+          "name": "Solution",
+          "info": "Technology, data, safeguards, delivery and operations"
+        },
+        {
+          "name": "Institution",
+          "info": "Leadership, governance, capability, resources, ownership"
+        },
+        {
+          "name": "Ecosystem",
+          "info": "Partners, funders, government, communities"
+        }
+      ],
+      "types": [
+        "Discover",
+        "Decide",
+        "Deliver",
+        "Operate"
+      ]
+    }
+  },
+  "jobs": [
+    {
+      "job_code": "I1",
+      "name": "Secure the champion and an institutional anchor",
+      "position": 1,
+      "stages": [
+        "Explore"
+      ],
+      "work_area": "Institution",
+      "job_type": "Decide",
+      "body": {
+        "intended_result": "A champion who meets four criteria, and an institutional anchor committed for 2–3 years that outlasts any one official.",
+        "why_it_matters": "A project spanning departments, community trust and a multi-year timeline does not move on a document or committee alone. Without a champion, it is likely to stall within its first few steps.",
+        "when": "Week 1.",
+        "how_summary": [
+          "Look for four criteria: alignment of care for the population served, direct influence over the departments involved, enough power to convene and mobilise resources, and respect in the local community.",
+          "A District Collector or the Secretary of the Department of Tribal Affairs tends to fit. A Chief Secretary or Agriculture Secretary can serve equally well if they meet the criteria.",
+          "Make the anchor a department, university or established NGO, in a role that outlasts one official’s tenure."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 0",
+            "timing": "Week 1",
+            "owner": "District Collector",
+            "text": "Confirm an institutional anchor for the project spanning two to three years (a department, university, or established NGO whose role outlasts one official’s tenure)."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "Not stated",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "District Collector"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owner in the DC checklist: District Collector.",
+        "gaps": [
+          "How a champion is identified or persuaded.",
+          "How the anchor is secured.",
+          "The playbook assumes local administrative backing is already in place."
+        ],
+        "maturity": {
+          "flag": "thin",
+          "note": "The criteria are clear. How to secure the person or the anchor is not described."
+        },
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "E2",
+      "name": "Secure a committed application owner",
+      "position": 2,
+      "stages": [
+        "Explore"
+      ],
+      "work_area": "Ecosystem",
+      "job_type": "Decide",
+      "body": {
+        "intended_result": "A committed deployment application is identified before any data collection starts.",
+        "why_it_matters": "Without a committed deployment application, the trained models go unused, and their real-world quality is never tested. Real usage shows where the model falls short and what to fix in the next round.",
+        "when": "Before the vendor is contracted (Weeks 4–6) and before any data collection starts.",
+        "how_summary": [
+          "Use a service that already reaches people, such as an agricultural IVR, a frontline health worker’s tool or a helpline, with the use case chosen with the community.",
+          "Engage the application owner as a partner from the start, with community leadership in the room, before a data collection vendor is contracted.",
+          "Have the application ready to test by the time the models are built.",
+          "Be clear about what the owner is committing to: deploying the outcome in a live service, fine-tuning it and maintaining it. A shared foundation model covers common use cases, and each department funds and owns its domain-specific top-up.",
+          "Reference case: the Maharashtra agriculture application (MahaVISTAAR and POCRA)."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 3",
+            "timing": "Week 4–6",
+            "owner": "District Collector",
+            "text": "Do not let a data collection vendor get contracted before the deployment owner and community leadership are in the room. Contracting collection first and looking for a deployment owner afterwards is a documented, avoidable failure."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "MahaVISTAAR",
+            "text": "Confirm the deployment platform (MahaVISTAAR) and engage its team from day one."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "Not stated",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "District Collector",
+          "Core Application Owner"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owner in the DC checklist: MahaVISTAAR team (the deployment platform).",
+        "gaps": [
+          "How to secure the commitment, what form it takes, who is responsible for securing it, and what to do if no owner is ready."
+        ],
+        "maturity": {
+          "flag": null,
+          "note": "Treated as the one non-negotiable gate. There is no basis for a finer rating."
+        },
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "E3",
+      "name": "Secure funding",
+      "position": 3,
+      "stages": [
+        "Explore",
+        "Define"
+      ],
+      "work_area": "Ecosystem",
+      "job_type": "Decide",
+      "body": {
+        "intended_result": "Funding secured for the first stage of data collection, from language survey through pilot collection.",
+        "why_it_matters": "A “No” on a readiness item is a task to complete, to avoid gaps in expectations and rework.",
+        "when": "Before the first collection stage. No week is stated.",
+        "how_summary": [
+          "Secure funding before starting the first collection stage.",
+          "Each deploying department funds its own domain-specific top-up."
+        ],
+        "tasks": [],
+        "roles": {
+          "owns": "Not stated",
+          "does": "Not stated",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "No owner is named in the DC checklist or the playbook.",
+        "gaps": [
+          "Where funding comes from.",
+          "A route to fund later collection and fine-tuning cycles.",
+          "A sustaining model for upkeep."
+        ],
+        "maturity": {
+          "flag": "thin",
+          "note": "Only the checklist item and the cost reference are given."
+        },
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "S1",
+      "name": "Map what already exists",
+      "position": 4,
+      "stages": [
+        "Explore",
+        "Define"
+      ],
+      "work_area": "Solution",
+      "job_type": "Discover",
+      "body": {
+        "intended_result": "An inventory of existing datasets, audio and community-held resources, so duplication is avoided and gaps are clear.",
+        "why_it_matters": "It avoids duplicating existing work and shows where the gaps are. A language with more existing media and open datasets costs meaningfully less to reach the same output.",
+        "when": "Before the project starts; Weeks 2–4 for community resources and the open-source scan; Weeks 1–2 of the language survey for existing audio.",
+        "how_summary": [
+          "Before initiating the project, check the existing datasets available in the community.",
+          "Map existing datasets and audio from radio stations, Krishi Vigyan Kendras, government institutions and other open or public sources.",
+          "The PMU gathers community-held resources: text, audio, video and digital content.",
+          "The orchestrating partner pulls relevant open-source datasets in parallel."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 2",
+            "timing": "Week 2–3",
+            "owner": "Nodal Officer’s team",
+            "text": "Collect whatever already exists with the community: text, audio, video."
+          },
+          {
+            "stage": "Stage 2",
+            "timing": "Week 3–4",
+            "owner": "Ecosystem Orchestrator (PxD/EkStep)",
+            "text": "Complete the open-source dataset scan for this language."
+          },
+          {
+            "stage": "Stage 4",
+            "timing": "Weeks 1–2 of the stage",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Map existing datasets and audio sources (radio stations, Krishi Vigyan Kendras, government institutions, open-market/public sources) to avoid duplication and identify real gaps."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "District Collector",
+            "text": "Before initiating the project, check the existing datasets available in the community."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Nodal Officer",
+            "text": "Identify existing resources and datasets that can be leveraged."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "PMU (community resources). Ecosystem Orchestrator (open datasets).",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "PMU",
+          "Data Collection Agency",
+          "District Collector",
+          "Nodal Officer"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "The open-source dataset scan is the Ecosystem Orchestrator’s (PxD/EkStep) item. Collecting what the community already has is the Nodal Officer’s team’s; mapping existing audio is the Data Collection Agency’s.",
+        "gaps": [
+          "Who owns the final inventory.",
+          "How existing media gets labelled is marked “to be clarified” in the budget (social media and YouTube annotation)."
+        ],
+        "maturity": null,
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "P3",
+      "name": "Choose the deployment use case",
+      "position": 5,
+      "stages": [
+        "Explore"
+      ],
+      "work_area": "People and Problem",
+      "job_type": "Decide",
+      "body": {
+        "intended_result": "A deployment use case is chosen with community input at the centre of the decision.",
+        "why_it_matters": "A deployment that misses actual community need, or involves the community too little in its design, leads to low adoption of the service.",
+        "when": "Timing not stated in the checklist. The playbook places it before data collection starts.",
+        "how_summary": [
+          "Pick a service that already reaches people, such as a crop advisory line, an agricultural IVR, a frontline health worker’s tool or a helpline.",
+          "Put community input at the centre of the choice.",
+          "Involve end users in testing before formal launch (see Field-test and accept the service).",
+          "Revisit the choice at the 12-month point, when another use case is identified for testing."
+        ],
+        "tasks": [
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Nodal Officer",
+            "text": "Define the concrete deployment use case in plain language (“farmers get crop advisories in their language”)."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "MahaVISTAAR",
+            "text": "Confirm the deployment platform (MahaVISTAAR) and engage its team from day one."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "Not stated",
+          "reviews": "Not stated",
+          "enables": "The language community (Community Heads and Community Contributors), whose input is at the centre of the decision."
+        },
+        "owners": [
+          "Nodal Officer",
+          "Core Application Owner"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owners in the DC checklist: Nodal Officer (defines the use case in plain language), MahaVISTAAR team (the deployment platform).",
+        "gaps": [
+          "Who makes the final choice.",
+          "How candidate use cases are compared."
+        ],
+        "maturity": null,
+        "recurs": true
+      }
+    },
+    {
+      "job_code": "P4",
+      "name": "Set goals and the output tier",
+      "position": 6,
+      "stages": [
+        "Explore"
+      ],
+      "work_area": "People and Problem",
+      "job_type": "Decide",
+      "body": {
+        "intended_result": "The project tier is defined at the beginning, with milestones at 3, 6 and 12 months.",
+        "why_it_matters": "Treating a finished dataset and a working, deployable model as the same milestone creates unrealistic expectations for funders and government partners.",
+        "when": "Timing not stated in the checklist. The playbook places it at the beginning, with milestones at 3, 6 and 12 months.",
+        "how_summary": [
+          "Choose the tier: dataset only (end of data collection); dataset plus model with reported evaluation scores (end of model building); full live deployment in a real service with a feedback loop (end of application integration); or signed off and open (end of sign-off).",
+          "Set milestones at 3, 6 and 12 months. They are listed in the Sequence tab."
+        ],
+        "tasks": [],
+        "roles": {
+          "owns": "Not stated",
+          "does": "Not stated",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "No owner is named in the DC checklist or the playbook.",
+        "gaps": [
+          "Who sets the tier and the milestones.",
+          "No reported results against these milestones are available, only the targets."
+        ],
+        "maturity": null,
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "P2",
+      "name": "Confirm target language and starting scope",
+      "position": 7,
+      "stages": [
+        "Explore"
+      ],
+      "work_area": "People and Problem",
+      "job_type": "Decide",
+      "body": {
+        "intended_result": "The district’s target language is confirmed, and a starting dialect, region and scope for data collection are chosen.",
+        "why_it_matters": "This decision anchors everything downstream.",
+        "when": "Week 1 to confirm the language, then Weeks 2–4 for the script and dialect decision.",
+        "how_summary": [
+          "The champion confirms the target language immediately, independent of anything else being resolved.",
+          "The dialect, and the region to start with, come out of the community meetings.",
+          "Script and dialect calls belong to the Linguistic Expert with community members. The champion creates the room where the decision gets made, not the decision itself.",
+          "Define the location and scope of data collection in preparation, before collection begins."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 0",
+            "timing": "Week 1",
+            "owner": "District Collector",
+            "text": "Confirm the district’s target language, in writing — independent of anything else being resolved."
+          },
+          {
+            "stage": "Stage 0",
+            "timing": "Week 1",
+            "owner": "DC’s Office",
+            "text": "Raise an internal e-Office note recording the district’s participation and the confirmed language, so the decision exists on file."
+          },
+          {
+            "stage": "Stage 0",
+            "timing": "Week 1",
+            "owner": "District Collector",
+            "text": "DC has confirmed the language and dialect starting point in writing."
+          },
+          {
+            "stage": "Stage 2",
+            "timing": "Week 2–4",
+            "owner": "District Collector",
+            "text": "In these meetings, extract: script preference, which dialect to start with, community-flagged concerns, existing resources (books/audio/video/digital content), resourceful individuals (radio/magazine operators, authors, singers), preservation preferences beyond language (food, medicine, songs, agricultural knowledge), and a directory of experts and willing contributors."
+          },
+          {
+            "stage": "Stage 2",
+            "timing": "Week 3–4",
+            "owner": "Linguistic Expert",
+            "text": "Make the final documented call on script and dialect, informed by the community meetings — this decision belongs to the Linguistic Expert, not the champion or the team."
+          },
+          {
+            "stage": "Stage 2",
+            "timing": "Week 3–4",
+            "owner": "Nodal Officer",
+            "text": "If the community cannot agree quickly on script or dialect, escalate to the Linguistic Expert at once. Unresolved script disputes are the most common reason this stage stalls for months."
+          },
+          {
+            "stage": "Stage 2",
+            "timing": "Week 2–4",
+            "owner": "District Collector",
+            "text": "Script and dialect decision confirmed in writing by the Linguistic Expert; at least the first of the three to four planned community meetings completed."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Nodal Officer",
+            "text": "Agree the script and orthography with elders, the Tribal Research Institute and a linguist."
+          }
+        ],
+        "roles": {
+          "owns": "Champion (target language). Linguistic Expert and Community Heads (script and dialect).",
+          "does": "Not stated",
+          "reviews": "Not stated",
+          "enables": "Champion convenes the community meetings where script and dialect are decided."
+        },
+        "owners": [
+          "District Collector",
+          "Nodal Officer",
+          "DC’s Office",
+          "Linguistic Expert"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owners in the DC checklist: District Collector (confirms the language and convenes the community meetings), Linguistic Expert (script and dialect decision), Nodal Officer (escalates disputes).",
+        "gaps": [
+          "What happens if the community and the Linguistic Expert disagree on script or dialect."
+        ],
+        "maturity": null,
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "P1",
+      "name": "Understand the language community and the access gap",
+      "position": 8,
+      "stages": [
+        "Explore"
+      ],
+      "work_area": "People and Problem",
+      "job_type": "Discover",
+      "body": {
+        "intended_result": "Speakers, dialects and script status of the language are mapped, and the gap between the language people live in and the language services run in is understood.",
+        "why_it_matters": "Digital infrastructure gets built where data already exists, so communities without it stay outside indefinitely. There is no commercial case for a private developer to build for them.",
+        "when": "Week 1 for the language profile, then the language survey (1–2 months, after scope and vendor selection).",
+        "how_summary": [
+          "Do secondary research on the language, population, dialects, geographic coverage and key language characteristics before any data collection.",
+          "Run a language survey (1–2 months) to map speakers, dialects and script status.",
+          "Look at where services fail. Village life happens in the local language while government camps run in the administrative language, and the gap is most severe for women, elders and low-literacy citizens."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 0",
+            "timing": "Week 1",
+            "owner": "Nodal Officer’s team",
+            "text": "Fill out the one-page Language Profile form (speakers, district, dialects present, starting dialect), in consultation with local language experts."
+          },
+          {
+            "stage": "Stage 4",
+            "timing": "Weeks 1–2 of the stage",
+            "owner": "Data Collection Agency / Vendor + Technical Partner",
+            "text": "Run secondary research: adjacent languages, demography, existing open-source datasets, key language characteristics."
+          },
+          {
+            "stage": "Stage 4",
+            "timing": "Weeks 3–4 of the stage",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Field-verify the geographic coverage and dialect boundaries surfaced in Stage 2 community meetings."
+          },
+          {
+            "stage": "Stage 4",
+            "timing": "Weeks 3–4 of the stage",
+            "owner": "Nodal Officer",
+            "text": "Chase resolution on any open script questions."
+          },
+          {
+            "stage": "Stage 4",
+            "timing": "Weeks 5–8 of the stage (if full 2 months)",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Finalise and submit the survey report; document script status and any residual disputes."
+          },
+          {
+            "stage": "Stage 4",
+            "timing": "Weeks 5–8 of the stage",
+            "owner": "Linguistic Expert + Nodal Officer",
+            "text": "Accept or send back the survey report."
+          },
+          {
+            "stage": "Stage 4",
+            "timing": "Ongoing this stage",
+            "owner": "Nodal Officer",
+            "text": "This step commonly slips because of script disputes carried over from Stage 2. Settle those first; do not let the survey run in parallel with an open dispute."
+          },
+          {
+            "stage": "Stage 4",
+            "timing": "End of stage",
+            "owner": "Nodal Officer",
+            "text": "Survey report accepted by the Nodal Officer and Linguistic Expert; no open script disputes remain."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Data Collection Vendor",
+            "text": "Map dialect variation across the district and set sampling quotas."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "Not stated",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "PMU",
+          "Data Collection Agency",
+          "Nodal Officer",
+          "Technical Partner",
+          "Linguistic Expert"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "The Nodal Officer’s team fills out the language profile (a PMU item). The Data Collection Agency with the Technical Partner runs the survey, and the Nodal Officer with the Linguistic Expert accepts the survey report.",
+        "gaps": [
+          "How script disputes, the most common delay at this step, are settled beyond the script and dialect call sitting with the Linguistic Expert and community members."
+        ],
+        "maturity": null,
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "I2",
+      "name": "Appoint the Nodal Officer and stand up the PMU",
+      "position": 9,
+      "stages": [
+        "Define"
+      ],
+      "work_area": "Institution",
+      "job_type": "Decide",
+      "body": {
+        "intended_result": "A Nodal Officer designated by name and post, leading a Project Management Unit (PMU) whose Management and Quality arms stay independent.",
+        "why_it_matters": "This is the single most time-sensitive action: everything else routes through the appointment. A post-based appointment lets the project survive the transfer of the champion or the officer.",
+        "when": "Week 1 to nominate the Nodal Officer and set up the coordination channel, then Weeks 1–2 to start onboarding the team.",
+        "how_summary": [
+          "The champion nominates the Nodal Officer, who stands up the PMU, the team that executes the work.",
+          "Split the PMU into a Management arm (procurement, vendor management, reporting) and a Quality arm (validation standards, sign-off), independent of each other.",
+          "In the first two weeks, set up a single coordination channel such as a WhatsApp group, share the data collection checklist in writing, hold one-to-one walkthroughs with each nodal officer, and begin identifying contributors, a linguistic expert and a reviewer.",
+          "Assume a full-time Nodal Officer."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 1",
+            "timing": "Week 1",
+            "owner": "District Collector",
+            "text": "Nominate the Nodal Officer by post (not by named person), so the role survives a transfer."
+          },
+          {
+            "stage": "Stage 1",
+            "timing": "Week 1",
+            "owner": "Nodal Officer",
+            "text": "Begin forming the small coordinating team."
+          },
+          {
+            "stage": "Stage 1",
+            "timing": "Week 1",
+            "owner": "Ecosystem Orchestrator (PxD/EkStep)",
+            "text": "Set up one coordination channel (e.g. a WhatsApp group) with all nodal officers and stakeholders; hold a one-to-one walkthrough with the Nodal Officer on the data collection checklist."
+          },
+          {
+            "stage": "Stage 1",
+            "timing": "Week 2",
+            "owner": "DC’s Office",
+            "text": "Issue the formal departmental order: appoints the Nodal Officer and sets up the review mechanism (weekly, fortnightly, monthly). Should be issued in Week 1 or 2 — a verbal understanding does not survive a transfer."
+          }
+        ],
+        "roles": {
+          "owns": "Champion (non-delegable).",
+          "does": "PMU, led by the Nodal Officer.",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "PMU",
+          "District Collector",
+          "Nodal Officer",
+          "DC’s Office"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Setting up the coordination channel and the one-to-one walkthrough with the Nodal Officer is the Ecosystem Orchestrator’s (PxD/EkStep) item. The District Collector nominates the Nodal Officer.",
+        "gaps": [
+          "How the Nodal Officer is selected."
+        ],
+        "maturity": null,
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "I3",
+      "name": "Establish governance and the review mechanism",
+      "position": 10,
+      "stages": [
+        "Define"
+      ],
+      "work_area": "Institution",
+      "job_type": "Deliver",
+      "body": {
+        "intended_result": "A formal departmental order sets up the review mechanism in week one, with work orders issued to every team and institution.",
+        "why_it_matters": "A written order survives a transfer or a change in priorities. A verbal agreement rarely does.",
+        "when": "Weeks 1–2 for the departmental order, then weekly, fortnightly and monthly reviews, with quarterly reviews of broader stakeholders.",
+        "how_summary": [
+          "The champion issues the departmental order in week one.",
+          "Weekly: Nodal Officer, project team and wider community. Fortnightly: the champion, on progress, issues and accountability. Monthly: the Line Secretary, across all district language projects.",
+          "Form a Steering Committee with cross-department authority that approves budget and direction and reviews quarterly.",
+          "Issue formal work orders to every team and institution instead of verbal agreements. After a work order and the collection agency’s report, review with the Steering Committee before the next stage.",
+          "Lock in the review cadence from day one, before any deadline is missed.",
+          "Set up an inter-departmental coordination committee under the Collector (Agriculture, Health, Education, Tribal Welfare, IT) by formal order.",
+          "Sign an MOU, or issue the departmental order, to embed the project institutionally."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 1",
+            "timing": "Week 2",
+            "owner": "DC’s Office",
+            "text": "Issue the formal departmental order: appoints the Nodal Officer and sets up the review mechanism (weekly, fortnightly, monthly). Should be issued in Week 1 or 2 — a verbal understanding does not survive a transfer."
+          },
+          {
+            "stage": "Stage 1",
+            "timing": "Week 1–2",
+            "owner": "District Collector",
+            "text": "Departmental order issued and circulated; Nodal Officer has begun onboarding the team."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "District Collector",
+            "text": "Set up an inter-departmental coordination committee under the Collector (Agriculture, Health, Education, Tribal Welfare, IT) by formal order."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "District Collector",
+            "text": "Schedule regular review meetings to track progress: monthly with the Agriculture Department Secretary for all Collectors (Collector or Nodal Officer), fortnightly with the Nodal Officer, and quarterly with broader stakeholders."
+          }
+        ],
+        "roles": {
+          "owns": "Champion (issues the order).",
+          "does": "PMU runs the weekly review, led by the Nodal Officer.",
+          "reviews": "Steering Committee; Line Secretary.",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "District Collector",
+          "DC’s Office"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owners in the DC checklist: District Collector and DC’s Office (departmental order, coordination committee and review meetings), Steering Committee.",
+        "gaps": [
+          "Who drafts the order."
+        ],
+        "maturity": null,
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "I6",
+      "name": "Build the validator, reviewer and coordinator pool",
+      "position": 11,
+      "stages": [
+        "Define",
+        "Pilot"
+      ],
+      "work_area": "Institution",
+      "job_type": "Deliver",
+      "body": {
+        "intended_result": "At least 5–10 trained validators, an independent Super Reviewer, and coordinators briefed on the purpose and the dialects.",
+        "why_it_matters": "Linguists and bilingual validators are scarce, and losing even one briefly can stall the project. Coordinators and validators who are not told the purpose, or are deployed across dialects without training, create errors and frustration.",
+        "when": "Week 2 to begin identifying people, validators once collection starts, and a pool of 5–10 checked in Months 4–6 of full collection.",
+        "how_summary": [
+          "Build a distributed pool of at least 5–10 trained validators.",
+          "Document the work thoroughly enough that any validator can pick up where another left off.",
+          "Brief coordinators and validators on the purpose of the exercise and train them before deployment across dialects.",
+          "The government appoints the Super Reviewer on a contract separate from the collection agency’s.",
+          "Begin identifying a reviewer early, and bring Validators in once data collection formally starts.",
+          "Identify language experts, such as poets, writers and fluent bilinguals, as translators, and subject matter experts (for example agriculture and health) for content review."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 1",
+            "timing": "Week 2",
+            "owner": "Nodal Officer",
+            "text": "Begin identifying three roles: a Linguistic Expert (the single most important role — decides script and dialect), a pool of potential Contributors, and a Reviewer. (Validators are identified later, once collection formally starts.)"
+          },
+          {
+            "stage": "Stage 7",
+            "timing": "Months 4–6 of the stage",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Check the Validator pool against the five-to-ten target; recruit more if it is thinner."
+          },
+          {
+            "stage": "Stage 7",
+            "timing": "Ongoing this stage",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Contributors and validators deployed across dialects without proper training — creates errors and frustration surfacing only after deployment."
+          },
+          {
+            "stage": "Stage 7",
+            "timing": "Ongoing this stage",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "A language-expert bottleneck — maintain a distributed pool of at least five to ten trained validators, not one."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Nodal Officer",
+            "text": "Identify language experts who can contribute, such as poets, writers and fluent bilinguals, as translators."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Nodal Officer",
+            "text": "Identify subject matter experts (for example agriculture and health) for content review."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Nodal Officer",
+            "text": "Identify a pool of contributors who can act as validators."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "PMU (identifies a reviewer; brings in Validators once collection formally starts).",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "Nodal Officer",
+          "Data Collection Agency"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owner in the DC checklist: Nodal Officer (identifies the Linguistic Expert, contributors, Reviewer and validator pool).",
+        "gaps": [
+          "Who trains the validators and coordinators."
+        ],
+        "maturity": null,
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "S4",
+      "name": "Design the data collection plan",
+      "position": 12,
+      "stages": [
+        "Define"
+      ],
+      "work_area": "Solution",
+      "job_type": "Decide",
+      "body": {
+        "intended_result": "An agreed volume target and speaker mix, planned as two to three collection rounds.",
+        "why_it_matters": "Testing after each round reveals surprises and gaps in data collection. Quality checks only at the end force expensive re-collection, and a dataset can hit its volume target and still fail if it is skewed toward one group.",
+        "when": "Week 2 for the requirements study, Weeks 4–5 for the technical specification, then 2–3 collection rounds.",
+        "how_summary": [
+          "Set volume between the “Must have” and “Good to have” tiers of the AI4Bharat framework. For a language with no digital resources, the practical minimum for a first functional model is about 300 hours of audio and 200K translation pairs.",
+          "Age mix: 20% aged 6–18, 40% aged 18–45, 30% aged 45–60, 10% aged 60+.",
+          "Speech style: 10% read, 45% spontaneous (for example describing a picture), 45% conversational (for example a mock call to an agriculture officer).",
+          "Domain: 70% generic, 30% other. Both genders equally represented.",
+          "Collect 50% of audio over telephony, because the voice service will largely be used on phone lines.",
+          "Collect in two to three rounds, updating the speech models and testing after each.",
+          "Aim for a first keyword-spotting model within weeks: 20–30 priority terms, about 200–500 recorded examples each.",
+          "Map dialect variation across the district and set sampling quotas.",
+          "The DC checklist sets telephony (8kHz) at no less than 25% of the audio. The figure above is 50%. Both are shown here.",
+          "The DC checklist gives a Gate 1 practical minimum of about 60–100 hours of speech and 25,000–40,000 translated sentences. The figure above is about 300 hours and 200K pairs. Both are shown here.",
+          "The DC checklist sets studio text-to-speech recording at 5–10 hours per speaker. The budget reference assumes 20 hours in total. Both are shown here."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 1",
+            "timing": "Week 2",
+            "owner": "Nodal Officer",
+            "text": "Start the requirements study: what data collection for this specific language will actually require (data types, likely quantity, existing digital footprint)."
+          },
+          {
+            "stage": "Stage 3",
+            "timing": "Week 4–5",
+            "owner": "Ecosystem Orchestrator (PxD/EkStep)",
+            "text": "Add the technical specification: dataset type and quantity, split between telephony/read/conversational/spontaneous speech, review mechanism including a neutral Super Reviewer, and the process for final dataset approval."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Data Collection Vendor",
+            "text": "Map dialect variation across the district and set sampling quotas."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "EkStep",
+            "text": "Set structured targets: about 70% generic and 30% domain (agriculture) sentences; translation pairs; broadband (16kHz) speech recognition data; telephony (8kHz) at least 25%; conversational speech; studio text-to-speech (5–10 hours per speaker)."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "PMU works out data collection requirements (types, quantity).",
+          "reviews": "Not stated",
+          "enables": "Champion co-signs the scope document."
+        },
+        "owners": [
+          "PMU",
+          "Nodal Officer",
+          "Data Collection Agency",
+          "EkStep"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "The technical specification (dataset type, quantity and the telephony, read and conversational split) is the Ecosystem Orchestrator’s (PxD/EkStep) item. The requirements study is the Nodal Officer’s.",
+        "gaps": [
+          "The budget assumes 100 of 300 hours as read speech (about a third), while the mix says 10%. Which is intended?",
+          "How the mix changes for a much smaller or larger speaker base.",
+          "The volume table is an image in the source, so its figures are not reproduced here.",
+          "The playbook and the DC checklist give different figures for the telephony share, the minimum volume and the studio hours per speaker. Both are shown; which applies is not settled."
+        ],
+        "maturity": {
+          "flag": "check",
+          "note": "Check the volume figures against the original AI4Bharat table, and against the different figures in the DC checklist."
+        },
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "E1",
+      "name": "Convene community leaders and language experts",
+      "position": 13,
+      "stages": [
+        "Explore"
+      ],
+      "work_area": "Ecosystem",
+      "job_type": "Discover",
+      "body": {
+        "intended_result": "Script preference, a dialect and region to start with, community-flagged challenges, existing resources, names of resourceful individuals and a directory of important people.",
+        "why_it_matters": "The champion’s institutional weight makes this land. An invitation from the Nodal Officer reads very differently from the Collector showing up in person. The community is the centre of the ecosystem, not a stakeholder at the edge.",
+        "when": "Weeks 2–4, with 3–4 meetings budgeted.",
+        "how_summary": [
+          "Meet tribal language enthusiasts, language experts, tribal welfare associations, authors, researchers and respected community members.",
+          "Budget 3–4 meetings. Keep the first one personal and do not compress it under timeline pressure.",
+          "Say that the effort is not being done for the community, it is only possible with the community.",
+          "Also ask about preservation preferences beyond language itself.",
+          "Have community leadership in the room before a data collection vendor is contracted.",
+          "Hold sensitisation meetings with Panchayats and community leaders on the project’s purpose, and Q&A sessions to address community concerns.",
+          "Consider a community launch event, in the style of Tribaldaan, that frames contribution as a source of pride."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 2",
+            "timing": "Week 2–3",
+            "owner": "District Collector",
+            "text": "Personally convene and chair the first meeting with community elders, language experts, tribal welfare associations, authors, researchers, and respected community members — this has to be the DC in person, not a Nodal Officer invitation."
+          },
+          {
+            "stage": "Stage 2",
+            "timing": "Week 2–3",
+            "owner": "DC’s Office",
+            "text": "Spread word through local channels, including newspapers, to widen reach and legitimacy."
+          },
+          {
+            "stage": "Stage 2",
+            "timing": "Week 2–4",
+            "owner": "District Collector",
+            "text": "Budget three to four such meetings in total — do not compress under timeline pressure; rushed community trust-building is the single most common cause of later delay."
+          },
+          {
+            "stage": "Stage 2",
+            "timing": "Week 2–4",
+            "owner": "District Collector",
+            "text": "In these meetings, extract: script preference, which dialect to start with, community-flagged concerns, existing resources (books/audio/video/digital content), resourceful individuals (radio/magazine operators, authors, singers), preservation preferences beyond language (food, medicine, songs, agricultural knowledge), and a directory of experts and willing contributors."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Nodal Officer",
+            "text": "Conduct sensitisation meetings with Panchayats and community leaders about the project’s purpose."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Nodal Officer",
+            "text": "Organise Q&A sessions to address community concerns."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Not stated",
+            "text": "Hold repeated field visits and open Q&A sessions that answer questions such as who will hear a contributor’s voice and whether they can withdraw."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Not stated",
+            "text": "Hold a community launch event, in the style of Tribaldaan, that frames contribution as a source of pride."
+          }
+        ],
+        "roles": {
+          "owns": "Champion.",
+          "does": "Champion convenes personally and chairs the first round.",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "District Collector",
+          "Nodal Officer",
+          "DC’s Office"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owner in the DC checklist: District Collector (convenes and chairs). DC’s Office spreads the word.",
+        "gaps": [
+          "What the PMU does in these meetings."
+        ],
+        "maturity": null,
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "I4",
+      "name": "Write the scope and requirements document",
+      "position": 14,
+      "stages": [
+        "Define"
+      ],
+      "work_area": "Institution",
+      "job_type": "Decide",
+      "body": {
+        "intended_result": "A jointly written scope document covering dialects, script, regions, contributor distribution, existing inventory and the review and audit process.",
+        "why_it_matters": "It is the basis for the RFP-equivalent used to select partners.",
+        "when": "Weeks 4–5.",
+        "how_summary": [
+          "The champion’s office and the orchestrating partner write it together.",
+          "The orchestrating partner adds the technical specification and converts it into an RFP-equivalent for partner selection.",
+          "The champion co-signs the formal scope document."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 3",
+            "timing": "Week 4–5",
+            "owner": "Nodal Officer + DC’s Office",
+            "text": "Jointly write the Requirements/Scope Document: dialects, script, regions for collection, contributor distribution required, what already exists with the administration, and the collection/review/audit process. Include special dataset needs (e.g. agricultural glossary, songs, recipes)."
+          },
+          {
+            "stage": "Stage 3",
+            "timing": "Week 4–5",
+            "owner": "Ecosystem Orchestrator (PxD/EkStep)",
+            "text": "Add the technical specification: dataset type and quantity, split between telephony/read/conversational/spontaneous speech, review mechanism including a neutral Super Reviewer, and the process for final dataset approval."
+          },
+          {
+            "stage": "Stage 3",
+            "timing": "Week 5–6",
+            "owner": "Ecosystem Orchestrator (PxD/EkStep)",
+            "text": "Convert the finalised scope into an RFP-equivalent document and circulate to shortlisted data collection vendors."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "PMU drafts it, jointly with the Ecosystem Orchestrator.",
+          "reviews": "Not stated",
+          "enables": "Champion co-signs."
+        },
+        "owners": [
+          "PMU",
+          "Nodal Officer",
+          "DC’s Office"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "The technical specification and the RFP-equivalent are the Ecosystem Orchestrator’s (PxD/EkStep) items. The Nodal Officer and DC’s Office write the scope document jointly.",
+        "gaps": [],
+        "maturity": null,
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "E4",
+      "name": "Select and contract partners",
+      "position": 15,
+      "stages": [
+        "Define"
+      ],
+      "work_area": "Ecosystem",
+      "job_type": "Decide",
+      "body": {
+        "intended_result": "An Ecosystem Orchestrator, a Data Collection Agency, a Technical Partner and a Model Hoster are contracted with MoUs and work orders, and a Super Reviewer is appointed separately.",
+        "why_it_matters": "These roles are always external and each keeps a distinct scope. Contracting collection before there is a deployment owner is a documented failure pattern.",
+        "when": "Weeks 4–6.",
+        "how_summary": [
+          "Data Collection Agency: field collection, transcription, platform and task management, first-pass validation. Final validation sign-off and model building are out of scope.",
+          "Technical Partner (for example AI4Bharat): training, benchmarking, retraining. Field collection and deployment ownership are out of scope.",
+          "Model Hoster (for example Bhashini or State Data Centres): sovereign hosting and API availability. Model quality decisions and data collection are out of scope.",
+          "Ecosystem Orchestrator (for example PxD or an EkStep Foundation equivalent): a neutral party with no vendor stake.",
+          "Select partners through an RFP-equivalent built from the scope document.",
+          "Do not contract data collection before the application owner and community leadership are in the room.",
+          "Negotiate data ownership, open standards and ULCA-compatible exports explicitly in the contract."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 3",
+            "timing": "Week 5–6",
+            "owner": "Ecosystem Orchestrator (PxD/EkStep)",
+            "text": "Convert the finalised scope into an RFP-equivalent document and circulate to shortlisted data collection vendors."
+          },
+          {
+            "stage": "Stage 3",
+            "timing": "Week 5–6",
+            "owner": "DC’s Office + Steering Committee",
+            "text": "Review vendor proposals jointly (DC’s office, PxD/EkStep, and — specifically on cost items — the Steering Committee). Hold a dedicated proposal walkthrough session before finalising, so cost assumptions are checked, not accepted on trust."
+          },
+          {
+            "stage": "Stage 3",
+            "timing": "Week 5–6",
+            "owner": "District Collector",
+            "text": "Select the vendor and sign the Work Order once selected; issue it to the vendor and every other team/institution engaged."
+          },
+          {
+            "stage": "Stage 3",
+            "timing": "Week 6",
+            "owner": "Steering Committee",
+            "text": "Review the vendor’s detailed work plan with the Steering Committee before Stage 4 begins."
+          },
+          {
+            "stage": "Stage 3",
+            "timing": "Week 4–6",
+            "owner": "District Collector",
+            "text": "Do not let a data collection vendor get contracted before the deployment owner and community leadership are in the room. Contracting collection first and looking for a deployment owner afterwards is a documented, avoidable failure."
+          },
+          {
+            "stage": "Stage 3",
+            "timing": "Week 4–6",
+            "owner": "District Collector",
+            "text": "Work Order signed by the DC’s office and the vendor; vendor’s initial work plan reviewed and cleared by the Steering Committee."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "PxD PMU",
+            "text": "Negotiate data ownership, open standards and ULCA-compatible exports explicitly in the contract."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "PMU Management arm handles procurement and vendor management.",
+          "reviews": "Not stated",
+          "enables": "Champion co-signs MoUs with the Technical Partner and the Data Collection Agency."
+        },
+        "owners": [
+          "PMU",
+          "District Collector",
+          "Steering Committee",
+          "DC’s Office"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "The contract terms on data ownership, open standards and ULCA-compatible exports are PxD PMU’s item, and the RFP-equivalent for vendor selection is the Ecosystem Orchestrator’s (PxD/EkStep). The District Collector selects the vendor and signs the Work Order.",
+        "gaps": [
+          "Selection criteria for vendors."
+        ],
+        "maturity": null,
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "I5",
+      "name": "Budget and resource the effort",
+      "position": 16,
+      "stages": [
+        "Define"
+      ],
+      "work_area": "Institution",
+      "job_type": "Decide",
+      "body": {
+        "intended_result": "A budget for foundation-building, plus the items outside it.",
+        "why_it_matters": "Naming the budget categories early avoids gaps in expectations and rework. Cost rises as the speaker base shrinks, because contributors, voice artists and existing media get scarcer.",
+        "when": "Weeks 5–6 for vendor proposals and cost review. Honorarium approval timing is not stated.",
+        "how_summary": [
+          "Reference for a language with 10–20 lakh speakers and no production-grade dataset: translation (about 200,000 sentences) about ₹40 lakh; speech collection (100 hours read plus 200 hours conversational) about ₹6 lakh; transcription and review (300 hours) about ₹20 lakh; studio TTS (20 hours) about ₹4 lakh. Subtotal about ₹70 lakh, plus 20% contingency, so ₹84 lakh to ₹1 crore overall.",
+          "Budget separately for Super Reviewer compensation, post-deployment maintenance, and upgrades for new use cases. None are in the reference figure.",
+          "Pay contributors directly and on time, framed as livelihood. Budget explicitly for any government officers contributing outside office hours.",
+          "Champion’s own time: 5–6 hours a week for most of the project, 10–12 hours a week in the first 3–4 weeks."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 3",
+            "timing": "Week 5–6",
+            "owner": "DC’s Office + Steering Committee",
+            "text": "Review vendor proposals jointly (DC’s office, PxD/EkStep, and — specifically on cost items — the Steering Committee). Hold a dedicated proposal walkthrough session before finalising, so cost assumptions are checked, not accepted on trust."
+          },
+          {
+            "stage": "Stage 7",
+            "timing": "Every week",
+            "owner": "Data Collection Agency / Vendor / DC’s Office",
+            "text": "Pay contributors directly and on time, framed as livelihood, not honorarium. Budget explicit compensation for government staff contributing outside office hours — do not assume goodwill."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "District Collector",
+            "text": "Approve the honorarium for contributors, with direct, verified and timely payment."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "AI4Bharat",
+            "text": "Budget 2–3 years of post-deployment maintenance, retraining and community evaluation."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "Not stated",
+          "reviews": "Steering Committee approves budget and direction.",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "DC’s Office",
+          "Steering Committee",
+          "Data Collection Agency",
+          "District Collector",
+          "Technical Partner"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owners in the DC checklist: DC’s Office and Steering Committee (vendor proposals and cost), District Collector (honorarium approval).",
+        "gaps": [
+          "Cost figures for maintenance, Super Reviewer and new use cases.",
+          "Existing media labelling is not costed.",
+          "The DC checklist’s Gate 1 minimum (60–100 hours of speech, 25,000–40,000 translated sentences) is lower than the reference budget’s volumes (300 hours, 200,000 sentences). Both are shown."
+        ],
+        "maturity": {
+          "flag": "check",
+          "note": "The cost table is not reconciled with the AI4Bharat per-hour estimate. The champion hours are an informed estimate, not documented from a project."
+        },
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "S3",
+      "name": "Design the voice experience for low-literacy users",
+      "position": 17,
+      "stages": [
+        "Define"
+      ],
+      "work_area": "Solution",
+      "job_type": "Decide",
+      "body": {
+        "intended_result": "A service that people who cannot read or type in the dominant script can use by voice, in their own language.",
+        "why_it_matters": "Speech needs no literacy, device fluency or familiarity with administrative language. In the Bhili work people did not type in the language and many struggled to read the dominant script, so a text interface would have missed them. Poor design for low-literacy users is a common cause of low adoption.",
+        "when": "Timing not stated in the checklist. The playbook places it in Define, before testing with real users.",
+        "how_summary": [
+          "Make voice the channel, both input and response, in the same language.",
+          "Plan for telephony: half of the speech data is collected over phone channels because the service will largely run on phone lines.",
+          "Involve end users in testing before launch."
+        ],
+        "tasks": [],
+        "roles": {
+          "owns": "Not stated",
+          "does": "Not stated",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "No owner is named in the DC checklist or the playbook.",
+        "gaps": [
+          "How the service itself is designed: steps, vocabulary handling, dialect handling.",
+          "Who designs it."
+        ],
+        "maturity": {
+          "flag": "thin",
+          "note": "The reasons for voice are well documented. How to design the service is not described."
+        },
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "S5",
+      "name": "Set orthography and transcription standards",
+      "position": 18,
+      "stages": [
+        "Define"
+      ],
+      "work_area": "Solution",
+      "job_type": "Decide",
+      "body": {
+        "intended_result": "An orthography policy and transcription guidelines are agreed, and applied the same way by every field team.",
+        "why_it_matters": "A collection agency grading its own work by its own informal standard is the gap the two-layer review exists to close. Quality control must run against a standardised, language-specific rubric agreed in advance.",
+        "when": "Standards creation, 1–2 months, after the language survey.",
+        "how_summary": [
+          "Take 1–2 months for standards creation.",
+          "The script call goes to the Linguistic Expert with community members.",
+          "One central program office sets the transcription guidelines, metadata schema and quality bar, and holds every field team to the same standard.",
+          "Agree the script and orthography with elders, the Tribal Research Institute and a linguist.",
+          "Build a reference glossary of domain terms and a pronunciation guide with elders."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 5",
+            "timing": "Weeks 1–2 of the stage",
+            "owner": "Technical Partner + Linguistic Expert",
+            "text": "Agree the orthography policy (spelling/grammar conventions) for the chosen script."
+          },
+          {
+            "stage": "Stage 5",
+            "timing": "Weeks 1–2 of the stage",
+            "owner": "Technical Partner",
+            "text": "Draft annotation guidelines and a metadata schema, set centrally by one programme office and applied the same way across every field team."
+          },
+          {
+            "stage": "Stage 5",
+            "timing": "Weeks 3–4 of the stage",
+            "owner": "Linguistic Expert",
+            "text": "Sign off on the linguistic content of the standards document."
+          },
+          {
+            "stage": "Stage 5",
+            "timing": "Weeks 3–4 of the stage",
+            "owner": "Nodal Officer",
+            "text": "Push actively for institutional approval on the standards document — this is where delays most commonly occur."
+          },
+          {
+            "stage": "Stage 5",
+            "timing": "Weeks 5–8 of the stage (if delayed)",
+            "owner": "Nodal Officer",
+            "text": "Escalate a pending sign-off directly rather than waiting."
+          },
+          {
+            "stage": "Stage 5",
+            "timing": "Ongoing this stage",
+            "owner": "Nodal Officer",
+            "text": "Slow institutional sign-off is the usual delay here; chase it directly."
+          },
+          {
+            "stage": "Stage 5",
+            "timing": "End of stage",
+            "owner": "Nodal Officer",
+            "text": "Standards document formally signed off by the Technical Partner and Linguistic Expert; no pending institutional approval."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Nodal Officer",
+            "text": "Agree the script and orthography with elders, the Tribal Research Institute and a linguist."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Data Collection Vendor",
+            "text": "Build a reference glossary of domain terms and a pronunciation guide with elders."
+          }
+        ],
+        "roles": {
+          "owns": "Central Program Office (guidelines, metadata schema). Linguistic Expert and Community Heads (script).",
+          "does": "Not stated",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "Nodal Officer",
+          "Technical Partner",
+          "Linguistic Expert",
+          "Data Collection Agency"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owners in the DC checklist: Technical Partner with the Linguistic Expert (orthography and guidelines). Nodal Officer chases institutional sign-off.",
+        "gaps": [
+          "Who gives the institutional sign-off. Sign-off delays are the common delay at this step."
+        ],
+        "maturity": null,
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "P5",
+      "name": "Set the quality bar and acceptance criteria",
+      "position": 19,
+      "stages": [
+        "Define"
+      ],
+      "work_area": "People and Problem",
+      "job_type": "Decide",
+      "body": {
+        "intended_result": "Benchmark thresholds, a language-specific quality rubric and use-case acceptance criteria are agreed before building starts.",
+        "why_it_matters": "Benchmark scores show a model is technically sound but not whether the deployed service works for its purpose. A model that performs well in controlled conditions can still underperform on real dialects and noise.",
+        "when": "Fixed during standards creation (1–2 months), then applied when benchmarking and acceptance testing.",
+        "how_summary": [
+          "Speech recognition, Word Error Rate (WER): below 20% is generally usable for government services; below 10% is production-grade; early tribal language models typically reach 30–50%, enough for keyword spotting and simple commands.",
+          "Translation, BLEU score (0–100): above 20 is usable for domain content; above 35 approaches human-level fluency in constrained domains; first-generation low-resource Indian language models typically score 10–25.",
+          "Voice output, Mean Opinion Score (MOS, 1–5): 3.5 or above is generally acceptable for public service use; 4.0–4.5 is studio quality; community tribal language models typically reach 2.5–3.5 at first.",
+          "Add use-case acceptance: about 100 real test interactions (for example calls to a live IVR) judged by the deploying department for acceptability to officials and the community, ideally by an independent third party.",
+          "Agree the quality rubric in advance so no collection agency grades its own work by an informal standard.",
+          "Cover correctness, clarity, safety and local relevance in the expert evaluation before rollout, rated by subject matter experts."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 5",
+            "timing": "Throughout",
+            "owner": "Technical Partner",
+            "text": "Fix the project’s quality bar by tying it to the three benchmark metrics used later: WER (speech recognition), BLEU (translation), MOS (speech naturalness)."
+          },
+          {
+            "stage": "Stage 8",
+            "timing": "After Gate 1",
+            "owner": "Technical Partner",
+            "text": "Benchmark models against the three standard metrics: WER (<20% usable for govt services, <10% production-grade), BLEU (>20 usable, >35 near human-level), MOS (≥3.5 generally acceptable)."
+          }
+        ],
+        "roles": {
+          "owns": "Central Program Office (quality bar).",
+          "does": "Technical Partner (reports WER, BLEU and MOS throughout).",
+          "reviews": "PMU Quality arm (audits the model-building gate).",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "Technical Partner"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owner in the DC checklist: Technical Partner (ties the quality bar to WER, BLEU and MOS). The playbook names the Central Program Office for the bar itself.",
+        "gaps": [
+          "Who signs off the acceptance criteria before building."
+        ],
+        "maturity": {
+          "flag": null,
+          "note": "About 100 test calls is given as an example, not a fixed requirement."
+        },
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "E6",
+      "name": "Recruit, train and pay community contributors",
+      "position": 20,
+      "stages": [
+        "Define",
+        "Pilot"
+      ],
+      "work_area": "Ecosystem",
+      "job_type": "Deliver",
+      "body": {
+        "intended_result": "A registered contributor pool that includes older speakers and voice artists, paid directly and on time.",
+        "why_it_matters": "Selection often leans on whoever is easiest to find and train, and because collection depends on technology, veteran speakers can easily get missed. They bring the purest form of spoken language.",
+        "when": "Week 1 of the pilot for the initial pool, a ramp in Month 1 of full collection, and ongoing.",
+        "how_summary": [
+          "Identify audio contributors and voice artists, including any community-led radio station.",
+          "Do not let selection overindex on convenience. Make sure older speakers are included.",
+          "Contributors are paid by the Data Collection Agency directly and on time. Treat it as livelihood work, not a favour.",
+          "Spending stays in the district and returns to the community that speaks the language.",
+          "The PMU works with line departments to identify the pool of data collectors.",
+          "Identify contributors across enforced diversity: gender, age (including elderly), dialect region, education and occupation.",
+          "Draw contributors from government staff as well as the wider community, and notify the eligibility criteria."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 6",
+            "timing": "Week 1 of the stage",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Identify and register an initial contributor pool, matched against the age, speech-style, and domain targets set in the Stage 3 scope."
+          },
+          {
+            "stage": "Stage 7",
+            "timing": "Month 1 of the stage",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Ramp contributor onboarding to the full target pool; build recording volume toward weekly targets."
+          },
+          {
+            "stage": "Stage 7",
+            "timing": "Every week",
+            "owner": "Data Collection Agency / Vendor / DC’s Office",
+            "text": "Pay contributors directly and on time, framed as livelihood, not honorarium. Budget explicit compensation for government staff contributing outside office hours — do not assume goodwill."
+          },
+          {
+            "stage": "Stage 7",
+            "timing": "Months 2–3 of the stage",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Review rejection-rate trends and adjust contributor training where dialect confusion appears."
+          },
+          {
+            "stage": "Stage 7",
+            "timing": "Ongoing this stage",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Contributors and validators deployed across dialects without proper training — creates errors and frustration surfacing only after deployment."
+          },
+          {
+            "stage": "Stage 7",
+            "timing": "Ongoing this stage",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Older, tech-averse speakers missed by tech-dependent recruitment — they carry the purest form of spoken language and are worth a deliberate, separate outreach effort."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Nodal Officer",
+            "text": "Identify contributors and field participants from government staff."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Nodal Officer",
+            "text": "Identify contributors and field participants from the larger community, including elderly people, women and other age groups."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Not stated",
+            "text": "Identify contributors across enforced diversity: gender, age (including elderly), dialect region, education and occupation."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "District Collector",
+            "text": "Notify the eligibility criteria for contributors."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "District Collector",
+            "text": "Approve the honorarium for contributors, with direct, verified and timely payment."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "PMU with District-Level Line Departments (identify). Data Collection Agency (pays).",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "Data Collection Agency",
+          "Nodal Officer",
+          "District Collector",
+          "DC’s Office"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owners in the DC checklist: Nodal Officer (identifies contributors), Data Collection Agency with DC’s Office (pays them), District Collector (approves the honorarium).",
+        "gaps": [
+          "How contributors are trained.",
+          "How contributors are replaced after dropout."
+        ],
+        "maturity": null,
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "S6",
+      "name": "Secure consent and data-protection compliance",
+      "position": 21,
+      "stages": [
+        "Define",
+        "Pilot",
+        "Scale"
+      ],
+      "work_area": "Solution",
+      "job_type": "Deliver",
+      "body": {
+        "intended_result": "Every contributor has given proper consent before collection starts, and relevant data-protection compliance is met.",
+        "why_it_matters": "Contributors want to know who will hear their voice and whether they can withdraw, so consent has to answer those questions before collection starts.",
+        "when": "Week 1 of the pilot collection, before any recording.",
+        "how_summary": [
+          "Take consent from contributors before the data collection process starts.",
+          "Meet the relevant requirements of the Digital Personal Data Protection (DPDP) Act.",
+          "Datasets and models are later released under CC BY 4.0 or equivalent.",
+          "Obtain granular, in-language consent that separates research, government and commercial use, with a right to withdraw.",
+          "Hold repeated field visits and open Q&A sessions that answer the questions contributors ask, such as who will hear their voice and whether they can withdraw."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 6",
+            "timing": "Week 1 of the stage",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Contributor informed consent obtained."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Not stated",
+            "text": "Hold repeated field visits and open Q&A sessions that answer questions such as who will hear a contributor’s voice and whether they can withdraw."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Not stated",
+            "text": "Obtain granular, in-language consent that separates research, government and commercial use, with a right to withdraw."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "Not stated",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "Data Collection Agency"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owner in the DC checklist: Data Collection Agency (informed consent).",
+        "gaps": [
+          "What contributors are told about open release under CC BY 4.0, and how withdrawal works once a dataset is public.",
+          "Who governs the data and shares the benefits: the community is said to own the language, but data governance is not described.",
+          "The source dates the DPDP Act “2027”. The Act dates from 2023, so check the reference."
+        ],
+        "maturity": {
+          "flag": "thin",
+          "note": "The checklists give a consent method, but nothing on explaining open release or on withdrawal after release."
+        },
+        "recurs": true
+      }
+    },
+    {
+      "job_code": "S7",
+      "name": "Collect speech and text",
+      "position": 22,
+      "stages": [
+        "Pilot",
+        "Scale"
+      ],
+      "work_area": "Solution",
+      "job_type": "Deliver",
+      "body": {
+        "intended_result": "A foundational dataset is collected to plan, starting with a small pilot.",
+        "why_it_matters": "Collection quality shapes everything downstream. Running collection, checking and validation in parallel lets problems surface early instead of forcing re-collection at the end.",
+        "when": "Pilot collection (about 1 month), then full collection (6–9 months, in 2–3 rounds).",
+        "how_summary": [
+          "Start with a one-month pilot collection: test at small scale for quality and register the contributor pool.",
+          "Then run full collection over 6–9 months in two to three rounds, using the diversity criteria and domain splits.",
+          "Run three quality tracks in parallel (collection, checking, validation) through real-time digital dashboards.",
+          "Record studio-quality voice with voice artists for text-to-speech. Use any community-led radio station if one exists.",
+          "Watch the common delays: trust-building taking longer than planned, validator availability, contributor dropout, and quality failures that need re-collection.",
+          "Allocate government infrastructure for studio-based recording: quiet rooms and microphones."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 6",
+            "timing": "Weeks 2–3 of the stage",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Collect a small trial batch of recordings using the standards approved in Stage 5."
+          },
+          {
+            "stage": "Stage 6",
+            "timing": "Week 4 of the stage",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Correct issues surfaced in the pilot (protocol gaps, contributor training gaps, community trust concerns) before scaling to full collection."
+          },
+          {
+            "stage": "Stage 6",
+            "timing": "Ongoing this stage",
+            "owner": "Nodal Officer",
+            "text": "Building real community trust usually takes longer than the plan assumes. Do not compress the pilot to hit a date."
+          },
+          {
+            "stage": "Stage 6",
+            "timing": "End of stage",
+            "owner": "Nodal Officer + Super Reviewer",
+            "text": "Super Reviewer confirms the pilot batch meets the quality bar; Nodal Officer confirms the contributor pool and protocol are ready to scale."
+          },
+          {
+            "stage": "Stage 7",
+            "timing": "Month 1 of the stage",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Full-scale recording begins across the target region(s), following the demographic and domain targets set in scope (age mix, speech style, domain split, channel, gender split)."
+          },
+          {
+            "stage": "Stage 7",
+            "timing": "Months 6–9 of the stage",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Final volume push toward the scale target."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Nodal Officer",
+            "text": "Identify and allocate government infrastructure to support studio-based data collection (quiet rooms, microphones)."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Data Collection Vendor",
+            "text": "Run a pilot for data collection and then scale up."
+          }
+        ],
+        "roles": {
+          "owns": "Champion’s office (holds direct responsibility for data collection and its on-site quality checks).",
+          "does": "Data Collection Agency (field collection, platform, task management, first-pass validation).",
+          "reviews": "Validator and Super Reviewer.",
+          "enables": "Community Heads mobilise participation."
+        },
+        "owners": [
+          "Data Collection Agency",
+          "Nodal Officer",
+          "Super Reviewer"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owner in the DC checklist: Data Collection Agency. The Nodal Officer, with the Super Reviewer, confirms the pilot is ready to scale and assembles the Gate 1 documentation.",
+        "gaps": [
+          "Who the “champion’s office” is in practice, beyond the PMU."
+        ],
+        "maturity": null,
+        "recurs": true
+      }
+    },
+    {
+      "job_code": "S9",
+      "name": "Validate and audit data quality",
+      "position": 23,
+      "stages": [
+        "Pilot",
+        "Scale"
+      ],
+      "work_area": "Solution",
+      "job_type": "Deliver",
+      "body": {
+        "intended_result": "Data passes two independent layers of review, and the dataset’s language purity is accountable to a named reviewer.",
+        "why_it_matters": "The layers are contractually separate so no single party grades its own work. Multi-stage review throughout makes catching a problem affordable instead of catastrophic.",
+        "when": "Week 4 of the pilot, then throughout full collection (6–9 months).",
+        "how_summary": [
+          "Layer 1: the collection agency’s first-pass validation, within its scope of work.",
+          "Layer 2: an independent Super Reviewer, such as a university linguist, a State Tribal Research Institute or a credentialed expert, appointed by the government on a separate contract.",
+          "A Validator’s rejection goes back to the Transcriber or Translator with specific correction guidance, not a bare pass or fail.",
+          "The Super Reviewer’s audit feeds systemic error patterns back into transcribers’ ongoing calibration.",
+          "Bring validators in once collection formally starts.",
+          "Set up the validation system early so review runs alongside collection in three tiers: contributor, checker, expert."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 6",
+            "timing": "Week 4 of the stage",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Run first-pass validation on the pilot batch through the vendor’s own in-house QC."
+          },
+          {
+            "stage": "Stage 6",
+            "timing": "Week 4 of the stage",
+            "owner": "Super Reviewer",
+            "text": "Audit a sample of the pilot output against the standardised rubric, on a contract separate from the vendor’s, so no single party grades its own work."
+          },
+          {
+            "stage": "Stage 7",
+            "timing": "Throughout",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Ensure data moves through the defined chain with escalation at every handoff: Contributor → Annotator/Transcriber/Translator → Validator → Super Reviewer."
+          },
+          {
+            "stage": "Stage 7",
+            "timing": "Throughout",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Ensure a Validator’s rejection routes back to the Annotator/Transcriber/Translator with specific correction guidance — never a bare pass/fail flag."
+          },
+          {
+            "stage": "Stage 7",
+            "timing": "Throughout",
+            "owner": "Data Collection Agency / Vendor + Super Reviewer",
+            "text": "Feed the Super Reviewer’s audit findings on systemic error patterns back into ongoing contributor and annotator calibration."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Nodal Officer",
+            "text": "Set up a data validation system for timely review of data quality, running alongside collection in three tiers: contributor, checker, expert."
+          }
+        ],
+        "roles": {
+          "owns": "Super Reviewer (signs off dataset collection).",
+          "does": "Validator. Data Collection Agency (first pass).",
+          "reviews": "Super Reviewer.",
+          "enables": "Central Program Office sets the quality bar."
+        },
+        "owners": [
+          "Data Collection Agency",
+          "Super Reviewer",
+          "Nodal Officer"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owners in the DC checklist: Data Collection Agency (first-pass validation) and Super Reviewer (audit).",
+        "gaps": [
+          "Super Reviewer compensation is to be budgeted separately, but no figure is given."
+        ],
+        "maturity": null,
+        "recurs": true
+      }
+    },
+    {
+      "job_code": "S8",
+      "name": "Transcribe, translate and label",
+      "position": 24,
+      "stages": [
+        "Pilot",
+        "Scale"
+      ],
+      "work_area": "Solution",
+      "job_type": "Deliver",
+      "body": {
+        "intended_result": "Raw recordings and sentences become transcribed and translated text, ready for validation.",
+        "why_it_matters": "Transcription surfaces gaps in the collected data, and those gaps feed back to data collection.",
+        "when": "Throughout full collection (6–9 months).",
+        "how_summary": [
+          "Audio runs through Audio Contributor, Transcriber, Validator, Super Reviewer.",
+          "Translation runs through Translator, Validator, Super Reviewer.",
+          "For the reference budget, plan about 200,000 translation sentences of roughly 10 words each, and 300 hours of transcription plus review."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 7",
+            "timing": "Throughout",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Ensure data moves through the defined chain with escalation at every handoff: Contributor → Annotator/Transcriber/Translator → Validator → Super Reviewer."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "Data Collection Agency (transcription). Transcriber / Translator.",
+          "reviews": "Validator.",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "Data Collection Agency"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owner in the DC checklist: Data Collection Agency.",
+        "gaps": [
+          "Where the source sentences for translation come from.",
+          "How existing media gets labelled."
+        ],
+        "maturity": null,
+        "recurs": true
+      }
+    },
+    {
+      "job_code": "P6",
+      "name": "Measure progress, quality and real use",
+      "position": 25,
+      "stages": [
+        "Pilot",
+        "Scale"
+      ],
+      "work_area": "People and Problem",
+      "job_type": "Operate",
+      "body": {
+        "intended_result": "Progress and quality are tracked separately and reviewed together at every review.",
+        "why_it_matters": "A project can be on schedule and still be building the wrong dataset, for example hitting a volume target with data skewed toward one demographic. The two failures need different fixes.",
+        "when": "Every week during full collection (6–9 months), at each gate, and continuing after launch.",
+        "how_summary": [
+          "Progress (Nodal Officer, weekly): hours or sentences collected against target, contributors onboarded, milestones hit against planned dates.",
+          "Quality (Quality PMU and Super Reviewer, at every collection and review gate): rejection rate at each review layer; diversity compliance across age, gender, dialect and channel; WER, BLEU and MOS once a model exists.",
+          "Report the three model metrics continuously, not only at the end.",
+          "Once live, capture usage gaps from the deployed service.",
+          "Provide a monitoring dashboard for the district administration and other stakeholders, with progress the community can see."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 7",
+            "timing": "Every week",
+            "owner": "Data Collection Agency / Vendor",
+            "text": "Track progress metrics (hours/sentences collected against target, contributors onboarded, milestones against planned dates) and quality metrics (rejection rate at each layer, diversity-gate compliance on age/gender/dialect/channel) separately — a project can be fully on schedule and still be collecting the wrong thing."
+          },
+          {
+            "stage": "Stage 7",
+            "timing": "Months 4–6 of the stage",
+            "owner": "District Collector",
+            "text": "Scrutinise diversity-gate compliance in the fortnightly review, not just volume."
+          },
+          {
+            "stage": "Stage 8",
+            "timing": "End of stage",
+            "owner": "Quality PMU",
+            "text": "Sign-off Gate 2, ‘Model Building Complete’: models meet the benchmark thresholds, audited by the Quality PMU."
+          },
+          {
+            "stage": "Stage 12",
+            "timing": "Ongoing",
+            "owner": "PMU",
+            "text": "Continue the Stage 7 review cadence and Stage 8 quality checks indefinitely as ongoing maintenance — a model good enough at launch will still need upkeep as usage grows."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Data Collection Vendor",
+            "text": "Set up a monitoring dashboard for the district administration and other stakeholders, with progress the community can see."
+          }
+        ],
+        "roles": {
+          "owns": "Nodal Officer (progress). PMU Quality arm and Super Reviewer (quality).",
+          "does": "Not stated",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "PMU",
+          "Data Collection Agency",
+          "District Collector"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Quality PMU signs off the model-building gate, and PMU continues the review cadence and quality checks after launch. Weekly progress review stays with the Nodal Officer.",
+        "gaps": [
+          "No baseline is described, and no measure of whether end users are better served.",
+          "How usage of the live service is measured beyond the gap list."
+        ],
+        "maturity": {
+          "flag": "thin",
+          "note": "Model quality and acceptance are covered well. Real-world impact is not."
+        },
+        "recurs": true
+      }
+    },
+    {
+      "job_code": "I7",
+      "name": "Steer delivery and resolve blockers",
+      "position": 26,
+      "stages": [
+        "Pilot",
+        "Scale"
+      ],
+      "work_area": "Institution",
+      "job_type": "Operate",
+      "body": {
+        "intended_result": "Progress, issues and accountability are reviewed on a fixed cadence, and delays and quality failures get resolved.",
+        "why_it_matters": "The champion’s authority is convening, funding and continuity. Staying above day-to-day work keeps the project moving without taking decisions that belong to experts.",
+        "when": "Every week, fortnight and month through full collection (6–9 months).",
+        "how_summary": [
+          "Attend the fortnightly review on progress, issue resolution and accountability.",
+          "Past the first weeks, the role narrows to overseeing direction, making executive decisions and resolving roadblocks.",
+          "Keep to convening and enabling. Script, dialect, quality thresholds and model architecture sit with others. Model building, hosting, integration and sign-off belong to the technical partner and hoster, and extending authority into them is a failure mode."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 7",
+            "timing": "Every week",
+            "owner": "Nodal Officer",
+            "text": "Run the weekly review with the project team and wider community."
+          },
+          {
+            "stage": "Stage 7",
+            "timing": "Every fortnight",
+            "owner": "District Collector",
+            "text": "Hold the fortnightly review: progress, escalated issue resolution, and accountability."
+          },
+          {
+            "stage": "Stage 7",
+            "timing": "Every month",
+            "owner": "Line Secretary",
+            "text": "Hold the monthly review: progress, outcomes, and priorities across all district language projects."
+          }
+        ],
+        "roles": {
+          "owns": "Champion.",
+          "does": "Nodal Officer weekly.",
+          "reviews": "Line Secretary monthly.",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "Nodal Officer",
+          "District Collector",
+          "Line Secretary"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owners in the DC checklist: Nodal Officer (weekly), District Collector (fortnightly), Line Secretary (monthly).",
+        "gaps": [
+          "How a stalled stage is escalated."
+        ],
+        "maturity": {
+          "flag": "judg",
+          "note": "The weekly hours are an informed estimate, not documented from a project."
+        },
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "E8",
+      "name": "Keep line departments and government stakeholders aligned",
+      "position": 27,
+      "stages": [
+        "Define",
+        "Pilot",
+        "Scale"
+      ],
+      "work_area": "Ecosystem",
+      "job_type": "Operate",
+      "body": {
+        "intended_result": "The Steering Committee, line departments, Tribal Research Institutes and the Line Secretary stay engaged.",
+        "why_it_matters": "The project spans multiple departments and a multi-year timeline. Line departments hold the ground and provide continuity between phases.",
+        "when": "Throughout, with monthly and quarterly reviews.",
+        "how_summary": [
+          "Engage district line departments: Agriculture, Education, Health and Tribal Welfare.",
+          "The Steering Committee has cross-department authority and reviews quarterly.",
+          "The Line Secretary reviews monthly across all district language projects.",
+          "State Tribal Research Institutes can supply Super Reviewers and linguistic expertise.",
+          "Engage the linguist or Tribal Research Institute as a co-owner, not just an adviser."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 7",
+            "timing": "Every month",
+            "owner": "Line Secretary",
+            "text": "Hold the monthly review: progress, outcomes, and priorities across all district language projects."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Nodal Officer",
+            "text": "Engage the linguist or Tribal Research Institute as co-owner, not just an adviser."
+          }
+        ],
+        "roles": {
+          "owns": "Champion convenes.",
+          "does": "Not stated",
+          "reviews": "Steering Committee; Line Secretary.",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "Line Secretary",
+          "Nodal Officer"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owners in the DC checklist: District Collector (coordination committee), Steering Committee, Line Secretary (monthly review).",
+        "gaps": [
+          "How approvals, data access and infrastructure integration are secured with government stakeholders.",
+          "How alignment survives administrative change beyond the continuity measures."
+        ],
+        "maturity": null,
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "E7",
+      "name": "Keep the community engaged",
+      "position": 28,
+      "stages": [
+        "Pilot",
+        "Scale"
+      ],
+      "work_area": "Ecosystem",
+      "job_type": "Operate",
+      "body": {
+        "intended_result": "Contributors stay motivated through the collection period.",
+        "why_it_matters": "Contributors tend to lose enthusiasm after the initial launch, and the community is the centre of the effort. Livelihood and direct recognition motivate far more than a preservation pitch.",
+        "when": "Throughout full collection. The first keyword-spotting model should be shared in Months 2–3.",
+        "how_summary": [
+          "Show real-time progress.",
+          "Recognise contributors regularly.",
+          "Show contributors the actual product of their work as early as possible. Hearing a real result in their own language is the strongest motivator, and it is why the early keyword-spotting model matters.",
+          "Include the wider community in the weekly review."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 7",
+            "timing": "Months 2–3 of the stage",
+            "owner": "Technical Partner",
+            "text": "Share the first lightweight keyword-spotting model (20–30 high-priority terms, e.g. health service names, scheme names, crop names) with the community and team as soon as it exists — the strongest available way to keep participation up."
+          },
+          {
+            "stage": "Stage 7",
+            "timing": "Ongoing this stage",
+            "owner": "Nodal Officer",
+            "text": "Community disengagement after the initial launch — counter with visible progress and by showing contributors the actual product of their work early."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Data Collection Vendor",
+            "text": "Set up a monitoring dashboard for the district administration and other stakeholders, with progress the community can see."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "Not stated",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "Technical Partner",
+          "Nodal Officer",
+          "Data Collection Agency"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owners in the DC checklist: Nodal Officer (counters disengagement), Technical Partner (shares the first keyword-spotting model).",
+        "gaps": [
+          "Who owns this.",
+          "How dropout is handled.",
+          "What recognition looks like in practice.",
+          "How engagement is measured."
+        ],
+        "maturity": null,
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "S10",
+      "name": "Train, fine-tune and benchmark models",
+      "position": 29,
+      "stages": [
+        "Pilot",
+        "Scale"
+      ],
+      "work_area": "Solution",
+      "job_type": "Deliver",
+      "body": {
+        "intended_result": "ASR, NMT and TTS models are trained and benchmarked, starting with a keyword-spotting model within weeks.",
+        "why_it_matters": "Models are benchmarked before they move forward, and retraining after each round of data reveals gaps early.",
+        "when": "After Gate 1. Fine-tuning repeats after every new round of data, about a week each time.",
+        "how_summary": [
+          "Train a first keyword-spotting model within weeks of collection starting.",
+          "Fine-tune the models after every round of collection, about a week each time.",
+          "Benchmark each model against WER, BLEU and MOS before it is considered ready.",
+          "Tell the data collection team about any collection misses."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 7",
+            "timing": "Months 2–3 of the stage",
+            "owner": "Technical Partner",
+            "text": "Share the first lightweight keyword-spotting model (20–30 high-priority terms, e.g. health service names, scheme names, crop names) with the community and team as soon as it exists — the strongest available way to keep participation up."
+          },
+          {
+            "stage": "Stage 8",
+            "timing": "After Gate 1",
+            "owner": "Technical Partner",
+            "text": "Take the validated dataset through annotation oversight and model training."
+          },
+          {
+            "stage": "Stage 8",
+            "timing": "After Gate 1",
+            "owner": "Technical Partner",
+            "text": "Benchmark models against the three standard metrics: WER (<20% usable for govt services, <10% production-grade), BLEU (>20 usable, >35 near human-level), MOS (≥3.5 generally acceptable)."
+          },
+          {
+            "stage": "Stage 8",
+            "timing": "After Gate 1",
+            "owner": "Technical Partner",
+            "text": "Feed back any data collection gaps found during training to the Nodal Officer, to correct in the next collection cycle."
+          },
+          {
+            "stage": "Stage 8",
+            "timing": "Recurring, about 1 week per cycle",
+            "owner": "Technical Partner",
+            "text": "Repeat model fine-tuning after every subsequent round of newly collected data — a recurring cost, not a one-time task."
+          }
+        ],
+        "roles": {
+          "owns": "Technical Partner (for example AI4Bharat).",
+          "does": "Technical Partner.",
+          "reviews": "PMU Quality arm audits the model-building gate.",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "Technical Partner"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owner in the DC checklist: Technical Partner.",
+        "gaps": [
+          "What happens when benchmarks stay below thresholds after several rounds."
+        ],
+        "maturity": {
+          "flag": "judg",
+          "note": "The one-week fine-tuning duration is an informed estimate, not documented from a project."
+        },
+        "recurs": true
+      }
+    },
+    {
+      "job_code": "I8",
+      "name": "Decide at the gates and sign off",
+      "position": 30,
+      "stages": [
+        "Pilot",
+        "Scale"
+      ],
+      "work_area": "Institution",
+      "job_type": "Decide",
+      "body": {
+        "intended_result": "Evidence-based sign-off at three gates, with “done” defined as two completed feedback cycles.",
+        "why_it_matters": "Sign-off tracks whether the work got done, separately from whether the paperwork to start was in place.",
+        "when": "Gate 1 at the end of full collection, Gate 2 at the end of model building, and Gate 3 every cycle.",
+        "how_summary": [
+          "Gate 1, Dataset collection complete: the dataset is collected and validated through the full chain. Super Reviewer signs off, and the deploying Department also signs off the dataset the vendor provides.",
+          "Gate 2, Model building complete: ASR, NMT and TTS meet the benchmark thresholds. Technical partner signs off, audited by the Quality PMU.",
+          "Gate 3, Application integration and feedback complete: the current model is live and usable by the public, a use-case acceptance test has passed, and usage gaps feed the next round. Independent test, signed off by the Core Application Owner.",
+          "Gate 3 repeats every cycle. Done means the latest version is live and usable by the public, with at least two complete feedback cycles.",
+          "Sustainability is a condition for completion: a project still dependent on its champion’s daily involvement has fallen short of done."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 7",
+            "timing": "Months 6–9 of the stage",
+            "owner": "Nodal Officer",
+            "text": "Start assembling the Gate 1 sign-off documentation for the Super Reviewer."
+          },
+          {
+            "stage": "Stage 7",
+            "timing": "End of stage",
+            "owner": "Super Reviewer",
+            "text": "Sign-off Gate 1, ‘Dataset Collection Complete’: Super Reviewer confirms the full dataset has passed the complete Contributor→Annotator/Transcriber/Translator→Validator→Super Reviewer chain and meets the agreed scale and diversity targets. (Practical minimum: ≈ 60–100 hours of speech and 25,000–40,000 translated sentences.)"
+          },
+          {
+            "stage": "Stage 8",
+            "timing": "End of stage",
+            "owner": "Quality PMU",
+            "text": "Sign-off Gate 2, ‘Model Building Complete’: models meet the benchmark thresholds, audited by the Quality PMU."
+          },
+          {
+            "stage": "Stage 11",
+            "timing": "Repeats every cycle",
+            "owner": "Core Application Owner",
+            "text": "Record Sign-off Gate 3, ‘Application Integration and Feedback Complete’ — not a one-time event; it repeats every cycle as the Model Building/Data Collection/Deployment loop continues."
+          },
+          {
+            "stage": "Stage 11",
+            "timing": "End of stage",
+            "owner": "Core Application Owner",
+            "text": "Two complete Gate 3 feedback cycles finished — the project’s formal definition of ‘done’ for the foundation-building phase. (Improvement can and should continue after this without changing completion status.)"
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Department of Agriculture",
+            "text": "Sign off on the language dataset provided by the vendor."
+          }
+        ],
+        "roles": {
+          "owns": "Super Reviewer, Technical Partner and Core Application Owner at their gates.",
+          "does": "Not stated",
+          "reviews": "PMU Quality arm; independent acceptance test.",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "PMU",
+          "Core Application Owner",
+          "Nodal Officer",
+          "Super Reviewer",
+          "Department of Agriculture"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Quality PMU signs off Gate 2. Super Reviewer signs off Gate 1 and the Core Application Owner records Gate 3.",
+        "gaps": [
+          "Whether “two cycles” means two passes of Gate 3 or two full collection-to-deployment loops is yet to be confirmed."
+        ],
+        "maturity": null,
+        "recurs": true
+      }
+    },
+    {
+      "job_code": "E5",
+      "name": "Manage partners through delivery",
+      "position": 31,
+      "stages": [
+        "Pilot",
+        "Scale"
+      ],
+      "work_area": "Ecosystem",
+      "job_type": "Operate",
+      "body": {
+        "intended_result": "Vendors deliver as agreed, without lock-in.",
+        "why_it_matters": "If data, models or workflows sit exclusively with one platform, the project depends on that vendor’s continued interest and pricing.",
+        "when": "From Week 6, after the Work Order, throughout delivery.",
+        "how_summary": [
+          "The PMU handles day-to-day vendor coordination once contracted.",
+          "Insist on open data standards and ULCA-compatible exports from day one.",
+          "Review work against the Steering Committee before the next stage proceeds."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 7",
+            "timing": "Ongoing this stage",
+            "owner": "Nodal Officer",
+            "text": "Vendor or platform lock-in — insist on open, ULCA-compatible exports from day one."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "PMU (Management arm: vendor management).",
+          "reviews": "Steering Committee.",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "Nodal Officer"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owners in the DC checklist: Nodal Officer (open, ULCA-compatible exports), Steering Committee (reviews the vendor’s work plan).",
+        "gaps": [
+          "How vendor performance is judged or what happens when a vendor under-delivers."
+        ],
+        "maturity": null,
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "S2",
+      "name": "Decide technology and hosting approach",
+      "position": 32,
+      "stages": [
+        "Define"
+      ],
+      "work_area": "Solution",
+      "job_type": "Decide",
+      "body": {
+        "intended_result": "Models are built as general-purpose capability, hosted on open, sovereign infrastructure, with no vendor lock-in.",
+        "why_it_matters": "If data, models or workflows sit with one commercial platform, the project depends on that vendor’s continued interest and pricing. Open hosting lets a second department or state build on the same capability without renegotiating access.",
+        "when": "Open, ULCA-compatible exports are watched throughout full collection (6–9 months). The contract terms and the Bhashini/ULCA registration have no timing stated.",
+        "how_summary": [
+          "Build the language capability (ASR, NMT, TTS) to be general-purpose and reusable, not locked to the first use case.",
+          "Host on open, publicly accessible, sovereign infrastructure such as Bhashini or State Data Centres.",
+          "Insist on open data standards and ULCA-compatible exports from day one.",
+          "Use a shared foundation model for common use cases. Each deploying department funds and owns its domain-specific top-up.",
+          "Register the language and the project with Bhashini/ULCA."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 7",
+            "timing": "Ongoing this stage",
+            "owner": "Nodal Officer",
+            "text": "Vendor or platform lock-in — insist on open, ULCA-compatible exports from day one."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Not stated",
+            "text": "Register the language and the project with Bhashini/ULCA."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "Technical Partner trains the models. Model Hoster hosts them.",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "Nodal Officer"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owners in the playbook: Technical Partner (trains the models) and Model Hoster (hosts them). The Nodal Officer insists on open, ULCA-compatible exports. The contract terms on open standards sit with PMU under Select and contract partners.",
+        "gaps": [
+          "Who makes the technology decision."
+        ],
+        "maturity": null,
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "I9",
+      "name": "Embed the service in departmental work and drive uptake",
+      "position": 33,
+      "stages": [
+        "Scale"
+      ],
+      "work_area": "Institution",
+      "job_type": "Deliver",
+      "body": {
+        "intended_result": "The target community and officials know about and use the deployed service.",
+        "why_it_matters": "A technically functional system needs real users to count as a success. Often the missing piece behind low adoption is low awareness.",
+        "when": "After deployment. Timing of the adoption drive is not stated.",
+        "how_summary": [
+          "The application owner runs a structured program to create awareness among targeted beneficiaries.",
+          "Involve end users in testing before launch.",
+          "Run an adoption drive so the community actually uses the service."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 7",
+            "timing": "Ongoing this stage",
+            "owner": "Nodal Officer",
+            "text": "Low community adoption after deployment — usually traces back to poor UX for low-literacy users, a deployment that misses actual community need, or low awareness, not to the model itself."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "Not stated",
+            "text": "Run an adoption drive so the community actually uses the service."
+          }
+        ],
+        "roles": {
+          "owns": "Core Application Owner (awareness program).",
+          "does": "Not stated",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "Nodal Officer"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owners: Core Application Owner (awareness program, per the playbook). The Nodal Officer watches the risk of low community adoption. The DC checklist has an adoption drive item with no owner named.",
+        "gaps": [
+          "How the service gets embedded in everyday departmental processes.",
+          "What uptake targets look like."
+        ],
+        "maturity": {
+          "flag": "thin",
+          "note": "A few lines in the source."
+        },
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "S11",
+      "name": "Host the models",
+      "position": 34,
+      "stages": [
+        "Pilot"
+      ],
+      "work_area": "Solution",
+      "job_type": "Deliver",
+      "body": {
+        "intended_result": "Models are served from open, sovereign, publicly accessible infrastructure.",
+        "why_it_matters": "Open hosting lets another department or state build on the same capability later without renegotiating access.",
+        "when": "After Gate 2.",
+        "how_summary": [
+          "Host on Bhashini or State Data Centres, providing API and service availability.",
+          "Keep model quality decisions, data collection and annotation out of the hoster’s scope."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 9",
+            "timing": "After Gate 2",
+            "owner": "Model Hosting Platform",
+            "text": "Receive the trained model and the underlying dataset."
+          },
+          {
+            "stage": "Stage 9",
+            "timing": "After Gate 2",
+            "owner": "Model Hosting Platform",
+            "text": "Confirm API and service availability for the deploying application ahead of integration."
+          },
+          {
+            "stage": "Stage 9",
+            "timing": "End of stage",
+            "owner": "Model Hosting Platform",
+            "text": "Hosting confirmed live; open licensing applied and recorded."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "Model Hoster (for example Bhashini).",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "Model Hoster"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owner in the DC checklist: Model Hosting Platform.",
+        "gaps": [
+          "Hosting cost and arrangements."
+        ],
+        "maturity": null,
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "E9",
+      "name": "Release dataset and model to the open commons",
+      "position": 35,
+      "stages": [
+        "Scale"
+      ],
+      "work_area": "Ecosystem",
+      "job_type": "Deliver",
+      "body": {
+        "intended_result": "The dataset is public on AIKosh, Bhashini or ULCA, and the model is public on Bhashini or Hugging Face, under CC BY 4.0 or equivalent.",
+        "why_it_matters": "The work outlives the specific contracts and people who built it, others can build on it, and no single vendor controls it.",
+        "when": "After Gate 2.",
+        "how_summary": [
+          "Treat release as a formal sign-off step for both the dataset and the model.",
+          "Use the CC BY 4.0 licence or equivalent.",
+          "Do it at the 12-month milestone.",
+          "In the Maharashtra checklist, AI4Bharat publishes the dataset onto Bhashini."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 9",
+            "timing": "After Gate 2",
+            "owner": "Model Hosting Platform + Technical Partner",
+            "text": "Release the dataset and model under open licensing (CC BY 4.0 or equivalent) — a formal step for both, not an informal afterthought."
+          },
+          {
+            "stage": "Stage 9",
+            "timing": "End of stage",
+            "owner": "Model Hosting Platform",
+            "text": "Hosting confirmed live; open licensing applied and recorded."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "AI4Bharat",
+            "text": "Publish the dataset onto Bhashini."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "Model Hoster (for example Bhashini) holds the model.",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "Model Hoster",
+          "Technical Partner"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owners in the DC checklist: Model Hosting Platform with the Technical Partner release the dataset and model. PMU and the District Collector keep them released afterwards (see Secure lasting ownership and continuity).",
+        "gaps": [
+          "How contributors’ consent relates to open release."
+        ],
+        "maturity": null,
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "S12",
+      "name": "Integrate into the live service",
+      "position": 36,
+      "stages": [
+        "Pilot"
+      ],
+      "work_area": "Solution",
+      "job_type": "Deliver",
+      "body": {
+        "intended_result": "The model works inside the real government service, so later model updates flow through the same pipeline.",
+        "why_it_matters": "Real usage in a live service is what surfaces gaps in the model: misheard words, missing vocabulary and uncovered dialects.",
+        "when": "About 2 weeks, one time, after the first model-building cycle.",
+        "how_summary": [
+          "Integrate once, at the end of the first model-building cycle.",
+          "The Model Hoster integrates, tests and sets up staging, typically in a couple of weeks.",
+          "Once testing passes, move the full stack to production.",
+          "Later fine-tuned models flow through the same integrated pipeline.",
+          "Roll out in phases, not all at once, with continued expert feedback."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 10",
+            "timing": "About 2 weeks",
+            "owner": "Core Application Owner",
+            "text": "Integrate the model into the live service (agricultural IVR, frontline worker’s tool, helpline)."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "MahaVISTAAR",
+            "text": "Roll out in phases, not all at once, with continued expert feedback."
+          }
+        ],
+        "roles": {
+          "owns": "Core Application Owner (deploys the outcome in a live service).",
+          "does": "Model Hoster.",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "Core Application Owner"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owner in the DC checklist: Core Application Owner.",
+        "gaps": [
+          "What the application owner must have ready on its side."
+        ],
+        "maturity": {
+          "flag": "judg",
+          "note": "The integration duration is an informed estimate, not documented from a project."
+        },
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "S13",
+      "name": "Field-test and accept the service",
+      "position": 37,
+      "stages": [
+        "Pilot"
+      ],
+      "work_area": "Solution",
+      "job_type": "Discover",
+      "body": {
+        "intended_result": "The service passes a use-case acceptance test judged independently of the vendor.",
+        "why_it_matters": "A model can pass benchmarks and still fail the purpose it was built for. Sign-off rests on use-case acceptance, with benchmark scores as supporting evidence.",
+        "when": "About 2 weeks of field testing, then acceptance testing. Repeats every cycle.",
+        "how_summary": [
+          "Brief field testers on the protocol. They need not understand the model.",
+          "Testers ask simple everyday questions and judge whether the system understands their speech, uses natural local language and responds clearly.",
+          "Language experts and engineers separately assess linguistic and technical performance and analyse the issues.",
+          "Findings may trigger data, model or application refinements, then another test cycle before final acceptance.",
+          "Run a defined batch of real interactions (for example about 100 test calls to a live IVR). The deploying department judges whether the output is acceptable for officials and the community, ideally via an independent third party.",
+          "A testing template spreadsheet exists for testers and auditors.",
+          "Run expert evaluation before rollout: curated queries, with subject matter experts rating correctness, clarity, safety and local relevance.",
+          "Look for known failure modes: source-language leakage (for example Marathi), missing safety warnings such as chemical dosages, no local context and poor formatting."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 10",
+            "timing": "About 2 weeks",
+            "owner": "Core Application Owner",
+            "text": "Run a dedicated field-testing phase bringing together field testers, language experts, and engineering teams. Brief field testers on the testing protocol only — they don’t need to understand the underlying model."
+          },
+          {
+            "stage": "Stage 10",
+            "timing": "About 2 weeks",
+            "owner": "Field Testers",
+            "text": "Using simple, everyday questions, assess whether the system understands real speech, uses natural/locally appropriate language, and responds clearly."
+          },
+          {
+            "stage": "Stage 10",
+            "timing": "About 2 weeks",
+            "owner": "Linguistic Expert + Engineering team",
+            "text": "Separately evaluate linguistic and technical performance and look into issues raised during field testing."
+          },
+          {
+            "stage": "Stage 10",
+            "timing": "About 2 weeks",
+            "owner": "Technical Partner + Core Application Owner",
+            "text": "Address findings with data, model, or application refinements as needed, followed by another testing cycle before final acceptance."
+          },
+          {
+            "stage": "Stage 10",
+            "timing": "End of stage",
+            "owner": "Core Application Owner",
+            "text": "Field testing complete; identified issues addressed, or deferred with a stated reason."
+          },
+          {
+            "stage": "Stage 11",
+            "timing": "",
+            "owner": "Core Application Owner",
+            "text": "Run a defined batch of real test interactions (e.g. roughly a hundred test calls to a live IVR service)."
+          },
+          {
+            "stage": "Stage 11",
+            "timing": "",
+            "owner": "Independent Evaluator",
+            "text": "Judge whether the output was acceptable for officials and the community — best made by an independent third party, standing apart from the vendor whose model is being evaluated."
+          },
+          {
+            "stage": "Stage 11",
+            "timing": "",
+            "owner": "Core Application Owner",
+            "text": "Move the model to full deployment on a passed use-case acceptance test, treating WER/BLEU/MOS scores as supporting evidence rather than the deciding factor."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "AI4Bharat",
+            "text": "Run expert evaluation before rollout: curated queries, with subject matter experts rating correctness, clarity, safety and local relevance."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "AI4Bharat",
+            "text": "Fix known failure modes: source-language (Marathi) leakage, missing safety warnings (for example chemical dosages), no local context and poor formatting."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "Field Testers, Linguistic Expert, Engineering Teams.",
+          "reviews": "Independent Third Party. Core Application Owner signs off.",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "Core Application Owner",
+          "Technical Partner",
+          "Field Testers",
+          "Linguistic Expert",
+          "Engineering Teams",
+          "Independent Third Party"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "Owner in the DC checklist: Core Application Owner, with Field Testers, Linguistic Expert and Engineering Team.",
+        "gaps": [
+          "Who the independent third party typically is."
+        ],
+        "maturity": null,
+        "recurs": true
+      }
+    },
+    {
+      "job_code": "I10",
+      "name": "Secure lasting ownership and continuity",
+      "position": 38,
+      "stages": [
+        "Scale"
+      ],
+      "work_area": "Institution",
+      "job_type": "Decide",
+      "body": {
+        "intended_result": "The mandate lives in a departmental order, the outputs are public, and a successor can pick the project up.",
+        "why_it_matters": "A project that depends on one person’s energy, or one person’s memory, is exposed to political or administrative change.",
+        "when": "Ongoing, with no end date.",
+        "how_summary": [
+          "Write every non-delegable action of the champion’s role into the departmental order, so the next post-holder can pick it up from the order.",
+          "Release the dataset and model openly so the work outlives specific contracts and people.",
+          "Publish the replication handbook.",
+          "Think of the champion’s role as a midwife’s, not an owner’s: facilitate, then step back and become redundant.",
+          "The Core Application Owner owns fine-tuning and upkeep.",
+          "Transition the community from contributors to owners: they flag errors, expand vocabulary and train validators."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 12",
+            "timing": "Ongoing",
+            "owner": "District Collector",
+            "text": "Write every non-delegable action from Stages 0–11 into the departmental order itself, so a successor can pick the project up directly from the order rather than reconstruct it from memory."
+          },
+          {
+            "stage": "Stage 12",
+            "timing": "Ongoing",
+            "owner": "District Collector / PMU",
+            "text": "Keep the dataset and model openly released, held in public commons rather than inside any single vendor’s or individual’s control."
+          },
+          {
+            "stage": "Stage 12",
+            "timing": "Ongoing",
+            "owner": "PMU",
+            "text": "Keep this playbook current as the replication handbook — a successor’s second reference alongside the departmental order."
+          },
+          {
+            "stage": "Stage 12",
+            "timing": "Ongoing",
+            "owner": "District Collector",
+            "text": "A project still fully dependent on its champion’s day-to-day involvement when they leave has fallen short of done, whatever its gate status says. The champion’s role is closer to a midwife’s than an owner’s: facilitate, then step back and become unnecessary to the process."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "AI4Bharat",
+            "text": "Transition the community from contributor to owner: flag errors, expand vocabulary and train validators."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "Not stated",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "PMU",
+          "District Collector",
+          "Technical Partner"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "PMU keeps the playbook current as the replication handbook, and with the District Collector keeps the dataset and model openly released. The District Collector writes the non-delegable actions into the departmental order.",
+        "gaps": [
+          "A formal handover instrument, such as a handover document or an incoming-officer briefing, is not described.",
+          "No financial or contractual mechanism for succession."
+        ],
+        "maturity": {
+          "flag": "thin",
+          "note": "Only the order, open licence and handbook are described."
+        },
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "E10",
+      "name": "Document and share the playbook",
+      "position": 39,
+      "stages": [
+        "Scale"
+      ],
+      "work_area": "Ecosystem",
+      "job_type": "Deliver",
+      "body": {
+        "intended_result": "A methodology handbook for dataset collection and model building, plus evaluation metrics, published for the next adopter.",
+        "why_it_matters": "A successor can pick up from the departmental order and the handbook, and each adoption makes the next one easier.",
+        "when": "Ongoing. The handbook is published at the 12-month milestone.",
+        "how_summary": [
+          "Publish the methodology handbook at the 12-month milestone.",
+          "Report the evaluation metrics and set quality improvement targets for the next round."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 12",
+            "timing": "Ongoing",
+            "owner": "PMU",
+            "text": "Keep this playbook current as the replication handbook — a successor’s second reference alongside the departmental order."
+          }
+        ],
+        "roles": {
+          "owns": "Not stated",
+          "does": "Not stated",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "PMU"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "PMU keeps the playbook current as the replication handbook.",
+        "gaps": [
+          "Who writes and maintains the handbook."
+        ],
+        "maturity": null,
+        "recurs": false
+      }
+    },
+    {
+      "job_code": "S14",
+      "name": "Capture usage gaps and keep improving",
+      "position": 40,
+      "stages": [
+        "Scale"
+      ],
+      "work_area": "Solution",
+      "job_type": "Operate",
+      "body": {
+        "intended_result": "A gap list from real usage becomes the brief for the next model refinement round.",
+        "why_it_matters": "A model that was good enough at launch still needs maintenance, and real usage is what shows the gaps.",
+        "when": "Ongoing after launch, with no end date.",
+        "how_summary": [
+          "Collect the gaps real usage surfaces: misheard words, missing domain vocabulary, uncovered dialect variation.",
+          "Route issues through model building first, so each stage’s feedback stays with its neighbour.",
+          "Continue improvement rounds indefinitely after the foundation phase is done.",
+          "Budget 2–3 years of post-deployment maintenance, retraining and community evaluation."
+        ],
+        "tasks": [
+          {
+            "stage": "Stage 12",
+            "timing": "Ongoing",
+            "owner": "PMU",
+            "text": "Continue the Stage 7 review cadence and Stage 8 quality checks indefinitely as ongoing maintenance — a model good enough at launch will still need upkeep as usage grows."
+          },
+          {
+            "stage": "",
+            "timing": "",
+            "owner": "AI4Bharat",
+            "text": "Budget 2–3 years of post-deployment maintenance, retraining and community evaluation."
+          }
+        ],
+        "roles": {
+          "owns": "Core Application Owner (fine-tuning and upkeep).",
+          "does": "Technical Partner refines.",
+          "reviews": "Not stated",
+          "enables": "Not stated"
+        },
+        "owners": [
+          "PMU",
+          "Technical Partner"
+        ],
+        "tracked_by": [
+          "PMU"
+        ],
+        "owner_note": "PMU continues the review cadence and quality checks indefinitely. Fine-tuning and upkeep stay with the Core Application Owner and the Technical Partner.",
+        "gaps": [
+          "What post-launch maintenance costs. The checklist says to budget 2–3 years of maintenance, retraining and community evaluation, with no figure.",
+          "How gaps are captured from live usage."
+        ],
+        "maturity": {
+          "flag": "thin",
+          "note": "Maintenance is acknowledged but not described."
+        },
+        "recurs": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+# Playbook seed files are compared byte-for-byte with database exports
+# (scripts/cube2/export-db.mjs), so keep LF on every platform.
+content/playbooks/** text eol=lf
