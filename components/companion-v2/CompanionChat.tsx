@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import WikiMarkdown from '@/components/WikiMarkdown';
 import { useCompanionChat } from '@/lib/companion-v2/use-companion-chat';
 import StateMarker from './StateMarker';
+import AssetLink from './AssetLink';
 import { shortWhen } from '@/lib/companion-v2/jobs';
 
 export interface ChatJob {
@@ -20,6 +21,7 @@ export interface ChatAsset {
   title: string;
   kind: 'file' | 'link';
   url: string | null;
+  storage_path: string | null;
 }
 
 interface Props {
@@ -204,24 +206,13 @@ export default function CompanionChat({ slug, playbookId, memberId, jobs, assets
                   {m.ui.showAssets.map((id) => {
                     const a = assetById.get(id);
                     if (!a) return null;
-                    return a.kind === 'link' && a.url ? (
-                      <a
+                    // Links open directly; files through a short-lived signed URL.
+                    return (
+                      <AssetLink
                         key={id}
-                        href={a.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        asset={a}
                         className="rounded-full border border-pb-line bg-pb-surface px-3 py-1 text-xs text-pb-accent transition hover:border-pb-accent"
-                      >
-                        {a.title} ↗
-                      </a>
-                    ) : (
-                      <span
-                        key={id}
-                        className="rounded-full border border-pb-line bg-pb-surface px-3 py-1 text-xs text-pb-muted"
-                        title="Files open from the job's page"
-                      >
-                        {a.title}
-                      </span>
+                      />
                     );
                   })}
                 </div>

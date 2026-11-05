@@ -18,7 +18,7 @@ export default async function WorkspaceHome({
 
   const [{ data: jobRows }, { data: assetRows }] = await Promise.all([
     supabase.from('playbook_jobs').select('job_code, name, position, body').eq('playbook_id', playbook.id),
-    supabase.from('assets').select('id, title, kind, url').eq('playbook_id', playbook.id),
+    supabase.from('assets').select('id, title, kind, url, storage_path').eq('playbook_id', playbook.id),
   ]);
 
   const jobs: ChatJob[] = (jobRows ?? [])
@@ -31,6 +31,7 @@ export default async function WorkspaceHome({
     id: a.id,
     title: a.title,
     kind: a.kind,
+    storage_path: a.storage_path,
     url: a.url,
   }));
 

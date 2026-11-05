@@ -36,7 +36,12 @@ export default async function JobsPage({ params }: { params: Promise<{ slug: str
     storage_path: a.storage_path as string | null,
     description: (a.description as string) ?? '',
   }));
-  const assetJobs = Object.fromEntries((assetRows ?? []).map((a) => [a.id as string, (a.job_codes as string[]) ?? []]));
+  // Only codes of jobs that still exist: an asset tagged only to removed jobs
+  // is listed under General resources instead of disappearing.
+  const known = new Set(jobs.map((j) => j.job_code));
+  const assetJobs = Object.fromEntries(
+    (assetRows ?? []).map((a) => [a.id as string, ((a.job_codes as string[]) ?? []).filter((c) => known.has(c))])
+  );
 
   return (
     <Suspense>

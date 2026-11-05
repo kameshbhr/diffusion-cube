@@ -100,7 +100,8 @@ There are three migrations. All tables have RLS enabled, and private rows cascad
   - Insert and delete: `is_playbook_contributor(…)`.
 
   Downloads use signed URLs.
-- **Uploads go straight from the browser to Supabase Storage**, never through a Next.js API route. Vercel functions reject request bodies over about 4.5 MB, so a 100 MB file cannot pass through one. The upload uses the contributor's own session, so the storage RLS policies above are the enforcement. Files over about 6 MB use Supabase's resumable (TUS) upload.
+- **Uploads go straight from the browser to Supabase Storage**, never through a Next.js API route. Vercel functions reject request bodies over about 4.5 MB, so a 100 MB file cannot pass through one. The upload uses the contributor's own session, so the storage RLS policies above are the enforcement. In v1 each file goes up in one request with a progress bar (decided in Slice 4c): resumable (TUS) upload would add a dependency (`tus-js-client`) and only matters for large files on a poor connection; add it if contributors need it.
+- **Opening files safely.** Uploads are stored with a content type chosen from the file extension: PDFs, PNG/JPEG/GIF/WebP images and plain text keep their type and open in the browser; everything else (HTML, SVG, office files, archives…) is stored as `application/octet-stream` and opened through a download link (`Content-Disposition: attachment`), so uploaded content never renders as a page on the storage domain. Checked on the test project in Slice 4c.
 - **No orphan files.** The order is:
   1. The browser generates `asset_id`.
   2. It uploads the object.
@@ -518,17 +519,17 @@ After each slice I stop. You test locally, then run the `qa-tester` subagent (ma
 4. Run `node scripts/cube2/check-patch.mjs` (a small assertion script over `patch.ts` cases, which I'll supply).
 
 ### Slice 4c: Assets
-**Build:** the `assets` bucket policies in use, the Assets screen (list, add or edit file or link, delete), direct browser upload with resumable upload over 6 MB and a progress bar, the orphan clean-up, and asset display in the job sheet and General resources, replacing the SQL-inserted test rows.
+**Build:** the `assets` bucket policies in use, the Assets screen (list, add or edit file or link, delete), direct browser upload in one request with a progress bar (resumable upload deferred, see section 2), the orphan clean-up, and asset display in the job sheet and General resources, replacing the SQL-inserted test rows.
 
 **Accept when:**
-- A 90 MB file and a link can each be added, tagged to a job, seen by an adopter in that job, and downloaded through a signed URL.
+- A large file (90 MB where the project allows it; the test project caps uploads at about 50 MB) and a link can each be added, tagged to a job, seen by an adopter in that job, and downloaded through a signed URL.
 - The upload request goes to the Supabase Storage host, not `/api/...` (check the Network tab).
 - An adopter can't upload. Storage refuses, as it does from devtools.
 - If the row insert fails, the uploaded object is removed and no orphan is listed.
 - Delete removes both the row and the object.
 
 **Test:**
-1. Upload 90 MB and 2 MB files and add a link, as a contributor.
+1. Upload a large file (up to the project's limit) and a 2 MB file and add a link, as a contributor.
 2. View them as an adopter.
 3. Simulate a failed insert by temporarily adding a `check (false)` constraint on `assets` in the test project, then check that Storage has no leftover object.
 4. Try `supabase.storage.from('assets').upload(...)` from an adopter's devtools.

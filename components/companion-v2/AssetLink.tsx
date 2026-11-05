@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { opensInline } from '@/lib/companion-v2/assets';
 
 export interface AssetLinkData {
   id: string;
@@ -39,7 +40,9 @@ export default function AssetLink({ asset, className = '' }: { asset: AssetLinkD
     tab.opener = null;
     const { data, error: signError } = await createClient()
       .storage.from('assets')
-      .createSignedUrl(asset.storage_path, 60);
+      // Only PDFs, plain images and text open in the browser; anything else
+      // (HTML, SVG, office files…) is downloaded, never rendered.
+      .createSignedUrl(asset.storage_path, 60, opensInline(asset.storage_path) ? undefined : { download: true });
     if (signError || !data?.signedUrl) {
       tab.close();
       setError("Couldn't open this file. Please try again.");
