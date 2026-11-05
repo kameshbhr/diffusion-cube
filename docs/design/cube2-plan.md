@@ -401,7 +401,7 @@ All of these sit under `/companion/[slug]/…`. The server checks the member rol
   - The admin types or selects a signed-up user's email and clicks **Add as contributor**, or clicks **Remove** on a row.
   - **Backend:** `app/api/admin/playbook-members/route.ts` follows the `app/api/admin/roles` pattern:
     - It checks `isAdmin` and writes with the service-role client.
-    - POST `{playbook_id, user_id, action:'add'|'remove'}` upserts the member row with `member_role='contributor'`. Remove deletes the row, or sets it back to `adopter` if the user has their own conversations in that playbook.
+    - POST `{playbook_id, user_id, action:'add'|'remove'}` upserts the member row with `member_role='contributor'`. Remove deletes the row, and with it (cascade) the person's conversations and job states in that playbook, after the admin confirms; decided after Slice 5 so a contributor's test chats never appear in the Conversations viewer as "User". They join again as an adopter if they reopen the playbook.
   - The user does not need Cube 1.0's `pathway_contributor` role. Contributor status is per playbook.
   - The change applies on the user's next page load: the extra tabs appear, and RLS allows edits.
   - Adopters join themselves on first open. There are no invites.

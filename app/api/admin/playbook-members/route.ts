@@ -4,9 +4,10 @@ import { isAdmin } from '@/lib/roles';
 
 // Cube 2.0: an admin makes a user a contributor to one playbook, or removes
 // that. Contributor status is per playbook and independent of Cube 1.0's
-// pathway_contributor role. Removing deletes the membership, unless the user
-// has their own adopter conversations in that playbook: then it is set back
-// to adopter so those conversations and job states are kept.
+// pathway_contributor role. Removing deletes the membership, and with it
+// (on delete cascade) the person's conversations and job states in that
+// playbook, so a contributor's test chats never show up as an adopter's.
+// If they open the playbook again, they join afresh as an adopter.
 export async function POST(req: Request) {
   // Never trust the client: re-check against the caller's own session.
   const supabase = await createClient();
@@ -45,24 +46,13 @@ export async function POST(req: Request) {
       .upsert({ playbook_id, user_id, member_role: 'contributor' }, { onConflict: 'user_id,playbook_id' });
     if (error) return Response.json({ error: error.message }, { status: 500 });
   } else {
-    const { data: member, error: findError } = await admin
+    // Only a contributor row: an adopter's membership is never removed here.
+    const { error } = await admin
       .from('playbook_members')
-      .select('id')
+      .delete()
       .eq('playbook_id', playbook_id)
       .eq('user_id', user_id)
-      .maybeSingle();
-    if (findError) return Response.json({ error: findError.message }, { status: 500 });
-    if (!member) return Response.json({ ok: true });
-
-    const { count, error: countError } = await admin
-      .from('companion_conversations')
-      .select('id', { count: 'exact', head: true })
-      .eq('member_id', member.id);
-    if (countError) return Response.json({ error: countError.message }, { status: 500 });
-
-    const { error } = count
-      ? await admin.from('playbook_members').update({ member_role: 'adopter' }).eq('id', member.id)
-      : await admin.from('playbook_members').delete().eq('id', member.id);
+      .eq('member_role', 'contributor');
     if (error) return Response.json({ error: error.message }, { status: 500 });
   }
 

@@ -38,6 +38,13 @@ export default function AdminPlaybookMembersPanel({
 
   async function change(userId: string, action: 'add' | 'remove') {
     if (!selected) return;
+    if (
+      action === 'remove' &&
+      !window.confirm(
+        `Remove ${emailById.get(userId) ?? 'this user'} as a contributor to "${selected.title}"? Their own conversations with Cube in this playbook and their job markers are deleted too. They can open the playbook again as an adopter.`
+      )
+    )
+      return;
     setPending(true);
     setError(null);
     try {

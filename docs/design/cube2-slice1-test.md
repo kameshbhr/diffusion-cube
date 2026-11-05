@@ -791,7 +791,9 @@ rollback;
 
 ---
 
-## 11. Admin add and remove keeps the member's own data (B)
+## 11. Admin add and remove (B)
+
+Changed after Slice 5: removing a contributor now deletes their membership, conversations and job states in that playbook (after a confirm), so their test chats never appear in the Conversations viewer.
 
 ### 11.1 Add B as a contributor
 
@@ -819,6 +821,7 @@ As A, click **Remove** next to B.
 
 | Expected | Pass/Fail |
 |---|---|
+| A confirm names B and the playbook and says B's own conversations and job markers are deleted. Cancel changes nothing; OK removes. | |
 | B disappears from the panel list. | |
 
 As postgres:
@@ -832,13 +835,13 @@ from playbook_members m where m.user_id = '<B>' and m.playbook_id = '<LRL_ID>';
 
 | Expected | Pass/Fail |
 |---|---|
-| Same id `<B_MEMBER>`, `member_role = adopter`, `conversations 1`, `job_states 1`. B's own data is kept. | |
+| No row: B's membership, conversations and job states in this playbook are gone. | |
 
 As B, reload.
 
 | Expected | Pass/Fail |
 |---|---|
-| Back to two tabs (Home, Jobs). `/companion/low-resource-language/playbook` is a 404 again. | |
+| Back to two tabs (Home, Jobs), with an empty Home chat: B has joined afresh as an adopter (a new member id). `/companion/low-resource-language/playbook` is a 404 again. | |
 
 ---
 
