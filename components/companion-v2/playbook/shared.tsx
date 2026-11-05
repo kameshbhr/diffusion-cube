@@ -22,10 +22,37 @@ export const MATURITY_FLAG: Record<string, { label: string; className: string }>
   check: { label: 'Needs check', className: 'bg-pb-check-bg text-pb-check-ink' },
 };
 
-export function Card({ title, wide, children }: { title: string; wide?: boolean; children: React.ReactNode }) {
+/** A small "Edit" button for a card, section or item (contributors only). */
+export function EditButton({ onClick, label = 'Edit', ariaLabel }: { onClick: () => void; label?: string; ariaLabel?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      className="flex-none rounded-md border border-pb-line bg-pb-surface px-2 py-0.5 text-xs font-medium text-pb-accent transition hover:border-pb-accent"
+    >
+      ✎ {label}
+    </button>
+  );
+}
+
+export function Card({
+  title,
+  wide,
+  onEdit,
+  children,
+}: {
+  title: string;
+  wide?: boolean;
+  onEdit?: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <div className={`rounded-lg border border-pb-line bg-pb-surface px-5 py-[18px] ${wide ? 'md:col-span-2' : ''}`}>
-      <h2 className="mb-2.5 font-serif text-[19px] font-bold text-pb-ink">{title}</h2>
+      <div className="mb-2.5 flex items-start justify-between gap-3">
+        <h2 className="font-serif text-[19px] font-bold text-pb-ink">{title}</h2>
+        {onEdit && <EditButton onClick={onEdit} ariaLabel={`Edit ${title}`} />}
+      </div>
       {children}
     </div>
   );

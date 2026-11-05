@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { JobRow } from '@/lib/companion-v2/types';
-import { MATURITY_FLAG, NS, NoOwnerFlag, OwnersText, typeColor } from './shared';
+import { EditButton, MATURITY_FLAG, NS, NoOwnerFlag, OwnersText, typeColor } from './shared';
 
 // Checklist items PMU does itself (as in the prototype's isPmuOwner).
 const PMU_OWNER = /PxD|PMU|Nodal Officer['’]s team/i;
@@ -17,7 +17,7 @@ function Sec({ title, children }: { title: string; children: React.ReactNode }) 
 }
 
 // The prototype's job drawer, read-only. Edit controls come in Slice 4b.
-export default function JobDrawer({ job, onClose }: { job: JobRow; onClose: () => void }) {
+export default function JobDrawer({ job, onClose, onEdit }: { job: JobRow; onClose: () => void; onEdit?: () => void }) {
   const b = job.body;
   const owners = b.owners ?? [];
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -76,14 +76,17 @@ export default function JobDrawer({ job, onClose }: { job: JobRow; onClose: () =
               {job.name}
             </h2>
           </div>
-          <button
-            ref={closeRef}
-            type="button"
-            onClick={onClose}
-            className="flex-none rounded-md border border-pb-line bg-pb-bg px-2.5 py-1.5 text-sm"
-          >
-            Close
-          </button>
+          <div className="flex flex-none items-center gap-2">
+            {onEdit && <EditButton label="Edit this job" onClick={onEdit} />}
+            <button
+              ref={closeRef}
+              type="button"
+              onClick={onClose}
+              className="flex-none rounded-md border border-pb-line bg-pb-bg px-2.5 py-1.5 text-sm"
+            >
+              Close
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-10 pt-4 text-[15px] leading-relaxed">

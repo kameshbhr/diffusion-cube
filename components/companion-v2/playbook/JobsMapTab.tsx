@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { JobRow, PlaybookFramework } from '@/lib/companion-v2/types';
-import { MATURITY_FLAG, NoOwnerFlag, OwnersText, typeColor } from './shared';
+import { EditButton, MATURITY_FLAG, NoOwnerFlag, OwnersText, typeColor } from './shared';
 
 function Tile({ job, cont, dim, onOpen }: { job: JobRow; cont: boolean; dim: boolean; onOpen: (code: string) => void }) {
   const b = job.body;
@@ -44,10 +44,12 @@ export default function JobsMapTab({
   jobs,
   framework,
   onOpenJob,
+  onAddJob,
 }: {
   jobs: JobRow[];
   framework: PlaybookFramework | undefined;
   onOpenJob: (code: string) => void;
+  onAddJob?: () => void;
 }) {
   const [types, setTypes] = useState<Set<string>>(new Set());
   const [q, setQ] = useState('');
@@ -113,6 +115,11 @@ export default function JobsMapTab({
         >
           PMU owns
         </button>
+        {onAddJob && (
+          <span className="ml-auto">
+            <EditButton label="Add a job" onClick={onAddJob} />
+          </span>
+        )}
       </div>
 
       <p className="mb-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[13px] text-pb-muted">

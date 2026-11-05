@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type { JobRow, PlaybookRole } from '@/lib/companion-v2/types';
-import { JobChip, NS } from './shared';
+import { EditButton, JobChip, NS } from './shared';
 
 const PMU_ROLE = 'Project Management Unit (PMU)';
 
@@ -41,11 +41,15 @@ export default function RolesTab({
   roles,
   jobs,
   onOpenJob,
+  onEdit,
 }: {
   roles: PlaybookRole[];
   jobs: JobRow[];
   onOpenJob: (code: string) => void;
+  /** name null = a new role. Not offered for owners the checklist names without a role card. */
+  onEdit?: (name: string | null) => void;
 }) {
+  const realRoles = new Set(roles.map((r) => r.name));
   const [group, setGroup] = useState('All');
   const [q, setQ] = useState('');
   const everyone = useMemo(() => allRoles(roles, jobs), [roles, jobs]);
@@ -109,6 +113,7 @@ export default function RolesTab({
             </button>
           ))}
         </div>
+        {onEdit && <EditButton label="Add a role" onClick={() => onEdit(null)} />}
       </div>
 
       {shown.length ? (
@@ -124,7 +129,10 @@ export default function RolesTab({
                   r.name === PMU_ROLE ? 'border-pb-accent' : 'border-pb-line'
                 }`}
               >
-                <div className="text-[11.5px] uppercase tracking-[0.04em] text-pb-muted">{r.group}</div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="text-[11.5px] uppercase tracking-[0.04em] text-pb-muted">{r.group}</div>
+                  {onEdit && realRoles.has(r.name) && <EditButton ariaLabel={`Edit role: ${r.name}`} onClick={() => onEdit(r.name)} />}
+                </div>
                 <h3 className="font-serif text-base font-bold">{r.name}</h3>
                 <p>{r.description}</p>
                 {r.example && <p className="text-[13px] text-pb-muted">{r.example}</p>}
