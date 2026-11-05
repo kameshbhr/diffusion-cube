@@ -25,6 +25,10 @@ All configuration is via environment variables read directly with `process.env.*
 | `NEXT_PUBLIC_SUPPORT_EMAIL` | No (defaults to `kamesh@ekstep.org`) | `lib/legal.ts` | "Contact Us" address substituted for `{{SUPPORT_EMAIL}}` in `content/legal/*.md`. Inlined at build time, so a change needs a rebuild. The Grievance Officer's email in those documents is literal text, not this variable |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | No | `lib/logger.ts` | Service-account credentials JSON for the Sheets logging sink |
 | `GOOGLE_SHEET_ID` | No | `lib/logger.ts` | Target spreadsheet for fire-and-forget conversation logging |
+| `NEXT_PUBLIC_CUBE_VERSION` | No | `lib/flags.ts`, `next.config.ts` | Cube 2.0 (branch `cube-2`): `2` hides Explore/Analyse/Contribute and shows the Companion. Build-time |
+| `COMPANION_DAILY_MESSAGE_CAP` | No (default 60) | `lib/companion-v2/handler.ts` | Cube 2.0: model calls per adopter per UTC day, counted in `companion_usage` |
+| `COMPANION_DAILY_CONTRIBUTOR_CAP` | No (default 40) | `lib/companion-v2/handler.ts` | Cube 2.0: model calls per contributor per UTC day (Update with Cube) |
+| `COMPANION_V2_FAIL_AFTER_CHARS` | No, dev only | `lib/anthropic-stream.ts` | Testing only: errors the companion-v2 stream after N characters. Ignored when `NODE_ENV=production` |
 
 > **Note:** `GITHUB_TOKEN`/`GITHUB_REPO`/`GITHUB_BRANCH` are live, actively-used variables that are not listed in this repo's `CLAUDE.md` environment-variable table at all — that table only documents the now-inert `GITHUB_WIKI_BASE_URL`/`NEXT_PUBLIC_GITHUB_WIKI_BASE_URL`. Anyone provisioning a new environment from `CLAUDE.md` alone would miss these three.
 
@@ -38,7 +42,7 @@ Per the Dockerfile's own header comment (see [`../operations/deployment.md`](../
 
 ## Feature flags
 
-No feature-flag system exists. One hardcoded UI toggle was found: `SHOW_ORG_FILTER = false` in `app/contribute/ContributeGrid.tsx` (line 44) — an organisation-filter feature that exists in code but is switched off for every user. This is a compile-time constant, not a runtime flag.
+`NEXT_PUBLIC_CUBE_VERSION` (`lib/flags.ts`) is the only feature flag: `2` turns on the Cube 2.0 companion. Otherwise no feature-flag system exists. One hardcoded UI toggle was found: `SHOW_ORG_FILTER = false` in `app/contribute/ContributeGrid.tsx` (line 44) — an organisation-filter feature that exists in code but is switched off for every user. This is a compile-time constant, not a runtime flag.
 
 ## Where configuration is validated
 

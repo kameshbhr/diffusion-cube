@@ -263,7 +263,10 @@ It returns `system` as content blocks, with the stable prefix first:
 - **Conversation scope.** Home opens the member's latest conversation.
   - A **"Start a new conversation"** button creates a fresh conversation whose `context` is copied from the previous one. Cube therefore remembers the situation but skips the intake questions.
   - Job states belong to the member, not the conversation, so they carry over automatically.
-  - Older conversations stay in the database. In v1 they are not listed for the adopter.
+  - **Recent conversations in the sidebar** (decided 2026-11-05, built in Slice 3): under **Companion**, the signed-in user's own conversations, newest first, as Cube 1.0 lists Recent Explorations.
+    - Each entry is labelled with the start of the user's first message, plus the playbook name when there is more than one playbook. A conversation with no user message yet shows "New conversation".
+    - Clicking one opens it on that playbook's Home (`/companion/[slug]?c=<conversation id>`). Without `?c=`, Home opens the latest conversation as now.
+    - **Delete** (with the same confirm dialog as Cube 1.0) removes the conversation and its messages for good, including from the contributors' anonymous viewer. Job states belong to the member, not the conversation, so they stay. RLS already lets users delete only their own conversations; no new tables.
 - **Google Sheets:** no logging for companion-v2, adopter or contributor. `logConversation` is not called.
 
 ## 5. Contributor chat: Update with Cube
@@ -457,14 +460,14 @@ After each slice I stop. You test locally, then run the `qa-tester` subagent (ma
 **Test:**
 1. Use a fresh account with a scripted 8-turn conversation (I'll supply it).
 2. Inspect `companion_messages` and `companion_conversations.context`.
-3. Say "we've already confirmed the language", check that P2 becomes `done`, then say nothing about S4 and check it has no row.
+3. Say "we've already confirmed the language", check that P2 ("Confirm target language and starting scope") becomes `in_progress` (only part of the job is done; `done` only when the person says dialect and scope are decided too), then say nothing about S4 and check it has no row.
 4. Use curl to post `role:'contributor'` as an adopter and expect a 403.
 5. **Failure before streaming:** set `ANTHROPIC_API_KEY` to an invalid value and restart. Send a message: Retry appears, and the row counts are unchanged.
 6. **Failure mid-stream:** a dev-only env var, `COMPANION_V2_FAIL_AFTER_CHARS=200`, makes the stream helper call `controller.error()` partway through. Check the same outcome.
 7. Set `COMPANION_DAILY_MESSAGE_CAP=3` and send 4 messages. Check `select * from companion_usage`. Then send a 5th with curl, using the session cookie, and expect a 429.
 
 ### Slice 3: adopter Home and Jobs
-**Build:** the Jobs list, the job sheet, state markers, the state/note editor, Only mine, inline job cards, asset chips and General resources (assets inserted by SQL for now), and "Ask Cube about this job".
+**Build:** the Jobs list, the job sheet, state markers, the state/note editor, Only mine, inline job cards, asset chips and General resources (assets inserted by SQL for now), "Ask Cube about this job", and the **Recent conversations** list in the sidebar with open and delete (section 4, Client).
 
 **Accept when:**
 - All 40 jobs show in sequence order with Owns or Tracks tags that match the HTML.
@@ -472,12 +475,15 @@ After each slice I stop. You test locally, then run the `qa-tester` subagent (ma
 - A user correction persists, and a later Cube update to the same job does not overwrite it.
 - "Ask Cube about this job" opens Home focused on that job.
 - The layout is clean on a phone-width screen.
+- The sidebar lists the user's own conversations, newest first, labelled by their first question. Clicking one opens it with its history and job cards. Deleting one (after a confirm) removes it and its messages, keeps the job states, and drops it from the contributor viewer. Another user's conversations never appear, and opening another user's `?c=` id falls back to the user's latest conversation.
 
 **Test:**
 1. Compare five jobs against the HTML "PMU owns" filter.
 2. Set S4 to Skipped by hand, then tell Cube "S4 is done" (in plain words). The marker should stay Skipped, with `set_by='user'`.
 3. Insert one link asset and one untagged asset by SQL and see where each appears.
 4. Resize to 375px.
+5. Start two conversations, reload, and switch between them from the sidebar. Delete one and check in SQL that its `companion_conversations` and `companion_messages` rows are gone while `member_job_states` is unchanged.
+6. Open `/companion/<slug>?c=<another user's conversation id>`: the user's own latest conversation opens instead.
 
 ### Slice 4a: contributor Playbook view, read-only
 **Build:** the React port of the HTML (Overview, Roles, Jobs map and Sequence tabs, plus `JobDrawer`), the `--pb-*` palette, the "No owner named" flag, and the **Download playbook as JSON** button.

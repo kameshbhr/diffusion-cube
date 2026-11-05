@@ -19,6 +19,8 @@ import { createClient } from '@/lib/supabase/server';
 import { hasAnyRole, hasRole } from '@/lib/roles';
 import { EMPTY_GRID } from '@/lib/dimensions';
 import { parseGridUpdate } from '@/lib/grid-update';
+import { handleCompanionV2 } from '@/lib/companion-v2/handler';
+import { isCube2 } from '@/lib/flags';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -35,6 +37,9 @@ const MODES = [
   'pathway-draft',
   'pathway-exec-summary',
   'library',
+  // Cube 2.0 (NEXT_PUBLIC_CUBE_VERSION=2). Separate from 'companion' above,
+  // which is Cube 1.0's and stays unchanged. See lib/companion-v2/handler.ts.
+  'companion-v2',
 ] as const;
 
 function lastUserMessageText(messages: { role: string; content: unknown }[]): string {
@@ -49,7 +54,8 @@ function lastUserMessageText(messages: { role: string; content: unknown }[]): st
 }
 
 export async function POST(req: Request) {
-  const { messages, mode, grid, meta, versionNumber, designId, flow, existingPublishedDoc, pathwayId } = await req.json();
+  const body = await req.json();
+  const { messages, mode, grid, meta, versionNumber, designId, flow, existingPublishedDoc, pathwayId } = body;
 
   if (!MODES.includes(mode)) {
     return Response.json({ error: 'Unknown mode.' }, { status: 400 });
@@ -66,6 +72,13 @@ export async function POST(req: Request) {
     if (!approved) {
       return Response.json({ error: 'Your account is awaiting approval.' }, { status: 403 });
     }
+  }
+
+  // Cube 2.0 companion: its own handler, prompt and response contract. Not
+  // logged to Google Sheets (spec decision 10b).
+  if (mode === 'companion-v2') {
+    if (!isCube2) return Response.json({ error: 'Unknown mode.' }, { status: 400 });
+    return handleCompanionV2(body, supabase);
   }
 
   // A companion turn's flow is fixed by the adoption's own meta.flow, chosen

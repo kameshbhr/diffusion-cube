@@ -92,7 +92,7 @@ npm run lint
 
 There is **no automated test suite** — verify manually (see [`architecture/testing.md`](docs/wiki/diffusion-cube/architecture/testing.md)).
 
-Env vars: `ANTHROPIC_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (required); `GITHUB_TOKEN` / `GITHUB_REPO` / `GITHUB_BRANCH` (assemble); `SEND_EMAIL_HOOK_SECRET`, `SMTP_*`, `EMAIL_FROM_ADDRESS` (auth email); `ADMIN_EMAILS`, `NEXT_PUBLIC_SUPPORT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_JSON` / `GOOGLE_SHEET_ID` (logging), `WIKI_PATH`.
+Env vars: `ANTHROPIC_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (required); `GITHUB_TOKEN` / `GITHUB_REPO` / `GITHUB_BRANCH` (assemble); `SEND_EMAIL_HOOK_SECRET`, `SMTP_*`, `EMAIL_FROM_ADDRESS` (auth email); `ADMIN_EMAILS`, `NEXT_PUBLIC_SUPPORT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_JSON` / `GOOGLE_SHEET_ID` (logging), `WIKI_PATH`. Cube 2.0: `NEXT_PUBLIC_CUBE_VERSION` (`2` turns it on, build-time), `COMPANION_DAILY_MESSAGE_CAP` / `COMPANION_DAILY_CONTRIBUTOR_CAP` (daily model calls, defaults 60 / 40), `COMPANION_V2_FAIL_AFTER_CHARS` (dev-only failure injection).
 
 Deploy: Vercel via `.github/workflows/deploy.yml` on push to `main` (live path); a Docker/AWS image is also defined but not CI-wired.
 
