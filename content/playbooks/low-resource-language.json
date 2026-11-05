@@ -663,6 +663,29 @@
         "why": "Cost assumptions get checked, not accepted on trust."
       }
     ],
+    "milestones": [
+      {
+        "label": "3 months",
+        "value": "A first keyword-spotting model is live in a pilot government service."
+      },
+      {
+        "label": "6 months",
+        "value": "A department queries a real service, such as a crop advisory line, by voice in the language and receives a voice response in the same language, with a few errors."
+      },
+      {
+        "label": "12 months",
+        "items": [
+          "The dataset is public on AIKosh, Bhashini or ULCA.",
+          "The model is public on Bhashini or Hugging Face.",
+          "The tested service is live to a larger public.",
+          "Another use case is identified for testing.",
+          "A methodology handbook for dataset collection and model building is published.",
+          "Evaluation metrics are reported and quality targets are set for the next round."
+        ]
+      }
+    ],
+    "milestones_note": "These are targets, not reported results. The quality needed for each to count as met is set in the job on the quality bar and acceptance criteria.",
+    "note": "Stage names and timings follow the DC meeting checklist. Readiness comes from the playbook itself. Where neither gives timing, a job’s placement is an assumption. The source also gives two different durations: 6–9 months of active effort for foundation-building, and 9+ months for data collection alone.",
     "framework": {
       "not_stated": "Not stated",
       "stages": [

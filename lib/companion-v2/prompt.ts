@@ -98,6 +98,14 @@ export function renderPlaybook(playbook: PlaybookRow, jobs: JobRow[]): string {
     L.push('');
   });
 
+  if (playbook.sequence?.note) L.push('### About these steps and timings', playbook.sequence.note, '');
+
+  if (playbook.sequence?.milestones?.length) {
+    L.push('## Milestones (targets)', ...entryLines(playbook.sequence.milestones));
+    if (playbook.sequence.milestones_note) L.push(playbook.sequence.milestones_note);
+    L.push('');
+  }
+
   L.push('## Hard rules', '');
   for (const r of rules) L.push(`- ${r.rule}${r.why ? ` Why: ${r.why}` : ''}`);
   L.push('');

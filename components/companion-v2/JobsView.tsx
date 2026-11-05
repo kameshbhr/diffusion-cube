@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import StateMarker from './StateMarker';
 import AssetLink, { type AssetLinkData } from './AssetLink';
 import JobSheet from './JobSheet';
@@ -36,7 +36,6 @@ function Owners({ owners, role }: { owners: string[]; role: string }) {
 // Adopter Jobs screen: every job for the user's role, in sequence order,
 // grouped under the step where it first appears. No framework labels.
 export default function JobsView({ slug, memberId, projectRole, jobs, phases, assets, assetJobs, initialStates }: Props) {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const openCode = searchParams.get('open');
@@ -87,7 +86,8 @@ export default function JobsView({ slug, memberId, projectRole, jobs, phases, as
     if (code) params.set('open', code);
     else params.delete('open');
     const qs = params.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    // Client-only URL update: opening or closing a job doesn't refetch the page.
+    window.history.replaceState(null, '', qs ? `${pathname}?${qs}` : pathname);
   };
 
   return (

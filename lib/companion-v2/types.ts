@@ -40,10 +40,22 @@ export interface PlaybookRule {
   why: string;
 }
 
+export interface PlaybookFramework {
+  not_stated: string;
+  stages: { name: string; info: string }[];
+  areas: { name: string; info: string }[];
+  types: string[];
+}
+
 export interface PlaybookSequence {
   phases?: PlaybookPhase[];
   rules?: PlaybookRule[];
-  framework?: unknown; // contributor jobs map only; never sent to the model
+  /** Target milestones (3, 6, 12 months): targets, not reported results. */
+  milestones?: OverviewEntry[];
+  milestones_note?: string;
+  /** A note about where the sequence and its timings come from. */
+  note?: string;
+  framework?: PlaybookFramework; // contributor jobs map only; never sent to the model
 }
 
 export interface PlaybookRow {

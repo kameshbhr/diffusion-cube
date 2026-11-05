@@ -376,7 +376,7 @@ All of these sit under `/companion/[slug]/…`. The server checks the member rol
   - A pencil on each card or section opens a form: `JobEditForm` (with a tasks table and chip inputs for owners and tracked_by), `RoleForm`, `OverviewForm`, `PhaseForm` and `RulesForm`.
   - Saving turns the form into ops, shows them in `PatchReview`, then calls `save_playbook`.
   - Jobs with no owners carry a small "No owner named" flag.
-  - **Download playbook as JSON** (optional, as a manual backup). This is a button in the Playbook header. It serialises the loaded playbook and jobs with `playbook-json.mjs`, plus the source document, into `{slug}-{date}.json`. It is generated in the browser, with no server call. The file has the same shape the seed script accepts, so it can be re-seeded with `--force` if ever needed.
+  - **Download playbook as JSON** and **Download source document** (a manual backup, built in Slice 4a). Two buttons in the Playbook header. The JSON is serialised in the browser with `playbook-json.mjs` as `{slug}-{date}.json`, byte-identical to `export-db.mjs` output; the source document downloads separately as `{slug}-{date}.source.md`. Together they are exactly what the seed script takes (`--json` and `--source`), so they can be re-seeded with `--force` if ever needed.
 - **Update with Cube** (`/update`): `ContributorChat` with 4 chips: "Edit a job", "Edit the overview, roles, sequence or rules", "Edit the source document" and "Update from files". `PatchReview` appears under each reply that carries a patch.
 - **Source document** (`/source`):
   - A `WikiMarkdown` view.
@@ -486,7 +486,7 @@ After each slice I stop. You test locally, then run the `qa-tester` subagent (ma
 6. Open `/companion/<slug>?c=<another user's conversation id>`: the user's own latest conversation opens instead.
 
 ### Slice 4a: contributor Playbook view, read-only
-**Build:** the React port of the HTML (Overview, Roles, Jobs map and Sequence tabs, plus `JobDrawer`), the `--pb-*` palette, the "No owner named" flag, and the **Download playbook as JSON** button.
+**Build:** the React port of the HTML (Overview, Roles, Jobs map and Sequence tabs, plus `JobDrawer`), the `--pb-*` palette, the "No owner named" flag, maturity pills (Thin / Estimate / Needs check) on Jobs map tiles and a Maturity section in the drawer (additions to the HTML, kept on purpose: decided 2026-11-05), and the **Download playbook as JSON** button.
 
 **Accept when:**
 - All four tabs match the HTML in content: every overview card, all 23 roles, all 40 jobs in the matrix with their continuation tiles, all 14 phases and 12 rules.

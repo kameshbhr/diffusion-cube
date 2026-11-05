@@ -127,9 +127,35 @@ const roles = ROLES.map((r) => ({
 }));
 
 // ---------- sequence ----------
+// renderSequence() hard-codes a Milestones card (3, 6 and 12 months, with a
+// note) and a note under the stages. They are content, so the real function is
+// run against a stub document that captures the HTML it writes, and the parts
+// are read from that. Any piece missing is an error, never a silent blank.
+ctx.__capturedSequence = null;
+vm.runInContext(
+  `(function () {
+    var real = document;
+    document = { getElementById: function () { return { set innerHTML(v) { __capturedSequence = v; } }; } };
+    try { renderSequence(); } finally { document = real; }
+  })()`,
+  ctx
+);
+const seqHtml = ctx.__capturedSequence;
+if (typeof seqHtml !== 'string') throw new Error('renderSequence() wrote no HTML.');
+const milestonesCard = seqHtml.match(/<h2>Milestones<\/h2>([\s\S]*?)<\/div><div class="card wide"><h2>Stages and timing<\/h2>/);
+if (!milestonesCard) throw new Error('Milestones card not found in renderSequence() output.');
+const notesIn = (s) => [...s.matchAll(/<p class="note">([\s\S]*?)<\/p>/g)].map((m) => text(m[1]));
+const milestonesNote = notesIn(milestonesCard[1])[0];
+const stagesNote = notesIn(seqHtml.slice(seqHtml.indexOf('Stages and timing')))[0];
+if (!milestonesNote) throw new Error('Milestones note not found in renderSequence() output.');
+if (!stagesNote) throw new Error('Stages note not found in renderSequence() output.');
+
 const sequence = {
   phases: PHASES.map((p) => ({ name: p.n, when: p.w, text: p.t, jobs: p.jobs })),
   rules: RULES.map(([rule, why]) => ({ rule, why: why || '' })),
+  milestones: parseKv(milestonesCard[1]),
+  milestones_note: milestonesNote,
+  note: stagesNote,
   // Framework placement, used only by the contributor's Jobs map. Never shown to adopters.
   framework: {
     not_stated: NS,
