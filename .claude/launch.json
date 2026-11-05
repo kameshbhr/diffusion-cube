@@ -7,6 +7,12 @@
       "runtimeArgs": ["run", "dev"],
       "port": 3211,
       "autoPort": true
+    },
+    {
+      "name": "next-start-built",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "start", "-p", "3212"],
+      "port": 3212
     }
   ]
 }

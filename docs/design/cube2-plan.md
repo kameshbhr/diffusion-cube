@@ -79,7 +79,7 @@ There are three migrations. All tables have RLS enabled, and private rows cascad
 - **`playbook_members`**
   - Columns: `id uuid pk` (added: the spec has `member_id` elsewhere but no id here), `user_id → auth.users on delete cascade`, `playbook_id → playbooks on delete cascade`, `member_role check in ('adopter','contributor')`, `project_role text default 'PMU'`, `created_at`. Unique on `(user_id, playbook_id)`.
   - There is no pseudonym column. You decided contributors see every adopter simply as **"User"**, so there is nothing to generate.
-- **Helper functions.** `is_playbook_member(pid)` and `is_playbook_contributor(pid)` are `stable security definer set search_path = public`. They are needed so `playbook_members` policies don't recurse. These are the repo's first security-definer functions; this is a deliberate new pattern.
+- **Helper functions.** `is_playbook_member(pid)` and `is_playbook_contributor(pid)` are `stable security definer set search_path = public`. They are needed so `playbook_members` policies don't recurse. These are the repo's first security-definer functions; this is a deliberate new pattern. Both also require an approved account (a `user_roles` row), so revoking a user's roles ends their playbook access at the database. `is_playbook_member` also requires the playbook to be listed, unless the caller contributes to it. (Slice 1 review.)
 - **`save_playbook(p_playbook_id uuid, p_base_updated_at timestamptz, p_playbook jsonb, p_jobs jsonb, p_removed_jobs text[]) returns timestamptz`.** This is the **only write path** for playbook content after seeding. It is a `security definer` plpgsql function with `search_path = public`, and `execute` is granted to `authenticated`. It runs in one transaction:
   1. If `is_playbook_contributor(p_playbook_id)` is false, it raises `forbidden`.
   2. It runs `select updated_at … for update` on the playbook row. This locks the row, so two saves cannot interleave.
@@ -119,7 +119,9 @@ There are three migrations. All tables have RLS enabled, and private rows cascad
   - RLS: users can select their own rows only, and nobody writes directly.
   - **`bump_companion_usage(p_role text, p_cap int) returns boolean`** is `security definer`. It runs `insert … on conflict (user_id, role, day) do update set count = companion_usage.count + 1 returning count`, using `auth.uid()`, and returns `count <= p_cap`.
   - Rows older than 30 days can be deleted at any time. Nothing reads them.
-- **`record_companion_turn(p_conversation_id, p_user_text, p_assistant_text, p_ui jsonb, p_context_patch jsonb, p_job_updates jsonb)`.** This is a `security invoker` function, so RLS still applies. In one transaction it inserts both messages, merges `context` (`context || p_context_patch`), and upserts the job states with `set_by='cube'`; the user-correction trigger still applies. A completed turn is therefore stored completely, and a failed one leaves nothing.
+- **`record_companion_turn(p_conversation_id, p_user_text, p_assistant_text, p_ui jsonb, p_context_patch jsonb, p_job_updates jsonb)`.** This is a `security invoker` function, so RLS still applies. In one transaction it inserts both messages, merges `context` (`context || p_context_patch`), and upserts the job states with `set_by='cube'`; the user-correction trigger still applies. A completed turn is therefore stored completely, and a failed one leaves nothing. Two safeguards, added after the Slice 1 review:
+  - A job update with an unknown job code, or a state outside the four allowed, is **skipped**, not fatal, so one bad entry from the model never costs the user their turn.
+  - Only the context keys `stage`, `location`, `done` and `role_note` are stored. The contributor RPCs show only those keys, so nothing else the model writes can reach a contributor.
 
 ### RLS matrix
 
@@ -387,7 +389,7 @@ All of these sit under `/companion/[slug]/…`. The server checks the member rol
   - The admin types or selects a signed-up user's email and clicks **Add as contributor**, or clicks **Remove** on a row.
   - **Backend:** `app/api/admin/playbook-members/route.ts` follows the `app/api/admin/roles` pattern:
     - It checks `isAdmin` and writes with the service-role client.
-    - POST `{playbook_id, user_id, action:'add'|'remove'}` upserts the member row with `member_role='contributor'`, or sets it back to `adopter`.
+    - POST `{playbook_id, user_id, action:'add'|'remove'}` upserts the member row with `member_role='contributor'`. Remove deletes the row, or sets it back to `adopter` if the user has their own conversations in that playbook.
   - The user does not need Cube 1.0's `pathway_contributor` role. Contributor status is per playbook.
   - The change applies on the user's next page load: the extra tabs appear, and RLS allows edits.
   - Adopters join themselves on first open. There are no invites.

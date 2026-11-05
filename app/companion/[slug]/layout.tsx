@@ -1,0 +1,34 @@
+import Link from 'next/link';
+import WorkspaceTabs from '@/components/companion-v2/WorkspaceTabs';
+import { getWorkspace } from '@/lib/companion-v2/server';
+
+export default async function WorkspaceLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  // Joins the caller as an adopter (PMU) on first open; 404s if not visible.
+  const { playbook, member } = await getWorkspace(slug);
+
+  return (
+    <div className="flex min-h-full flex-col">
+      <header className="border-b border-pb-line bg-pb-surface">
+        <div className="mx-auto w-full max-w-5xl px-4 pt-5 sm:px-8">
+          <Link href="/companion" className="text-xs text-pb-muted transition hover:text-pb-accent">
+            ← All playbooks
+          </Link>
+          <h1 className="mt-1.5 font-serif text-xl font-bold leading-snug text-pb-ink sm:text-2xl">
+            {playbook.title}
+          </h1>
+          <div className="mt-3">
+            <WorkspaceTabs slug={playbook.slug} isContributor={member.member_role === 'contributor'} />
+          </div>
+        </div>
+      </header>
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-6 sm:px-8">{children}</div>
+    </div>
+  );
+}

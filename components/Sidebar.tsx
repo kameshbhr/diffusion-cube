@@ -7,6 +7,7 @@ import SignOutButton from '@/components/SignOutButton';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { showToast } from '@/lib/toast';
 import { createClient } from '@/lib/supabase/client';
+import { isCube2 } from '@/lib/flags';
 
 interface AdoptionSummary {
   id: string;
@@ -55,7 +56,8 @@ export default function Sidebar({ email, adoptions, isAdmin }: Props) {
     // No user to fetch for — leave state as-is rather than a synchronous
     // setState-in-effect; a sign-out remounts the sidebar on the next
     // navigation anyway, so stale data here never actually surfaces.
-    if (!email) return;
+    // Cube 2.0 hides Recent Explorations (Cube 1.0 data), so skip the fetch.
+    if (!email || isCube2) return;
     let cancelled = false;
     const supabase = createClient();
     supabase
@@ -108,17 +110,23 @@ export default function Sidebar({ email, adoptions, isAdmin }: Props) {
   // The wiki itself is corpus material for the companion's prompts now, not
   // a user-facing nav destination (the pages still exist at /wiki, just
   // unlinked here).
+  // Cube 2.0 (NEXT_PUBLIC_CUBE_VERSION=2) replaces the three Cube 1.0 items
+  // with a single Companion item; the old routes are hidden, not deleted.
   const navItems = [
-    { href: '/explore', label: 'Explore' },
-    { href: '/analyse', label: 'Analyse' },
-    { href: '/contribute', label: 'Contribute' },
+    ...(isCube2
+      ? [{ href: '/companion', label: 'Companion' }]
+      : [
+          { href: '/explore', label: 'Explore' },
+          { href: '/analyse', label: 'Analyse' },
+          { href: '/contribute', label: 'Contribute' },
+        ]),
     ...(isAdmin ? [{ href: '/admin', label: 'Admin' }] : []),
   ];
 
   // Contributions now live in their own grid at /contribute — this list
   // combines Strengthen sessions and Explore/Library chats, the two flows
   // that don't have their own dedicated grid page.
-  const recentExplorations: RecentItem[] = [
+  const recentExplorations: RecentItem[] = isCube2 ? [] : [
     ...adoptions
       .filter((a) => a.meta?.flow === 'explorer' && !deletedIds.has(a.id))
       .map((a) => ({

@@ -220,7 +220,7 @@ if (noTracked.length) problems.push(`Jobs not tracked by PMU: ${noTracked.map((j
 const creditsText = JSON.stringify(overview.credits);
 if (!creditsText.includes('CC BY 4.0')) problems.push('Credits do not contain "CC BY 4.0".');
 if (!creditsText.includes('EkStep')) problems.push('Credits do not contain "EkStep".');
-if (/only for author/i.test(JSON.stringify(playbook))) problems.push('Playbook contains "Only for Author" text.');
+if (/\bonly\s+for\s+author\b/i.test(JSON.stringify(playbook))) problems.push('Playbook contains "Only for Author" text.');
 
 for (const [k, v] of Object.entries(overview)) {
   if (!Array.isArray(v) || !v.length) problems.push(`Overview section "${k}" is empty.`);

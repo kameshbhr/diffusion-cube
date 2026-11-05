@@ -30,6 +30,28 @@
   --color-border: rgba(27, 27, 66, 0.1);
   --color-ink: #363538;
   --color-ink-soft: rgba(54, 53, 56, 0.6);
+
+  /* Cube 2.0 companion: the calm light palette of the playbook HTML
+     prototype (docs/design/low-resource-language-ai-adoption-playbook.html).
+     Light only, as the spec asks. Used as bg-pb-*, text-pb-*, border-pb-*. */
+  --color-pb-bg: #f2f4f6;
+  --color-pb-surface: #ffffff;
+  --color-pb-ink: #18212b;
+  --color-pb-muted: #5b6672;
+  --color-pb-line: #d5dae0;
+  --color-pb-line-soft: #e6e9ed;
+  --color-pb-accent: #27408b;
+  --color-pb-accent-soft: #e4e9f6;
+  --color-pb-discover: #2a6fb0;
+  --color-pb-decide: #b7791f;
+  --color-pb-deliver: #2f855a;
+  --color-pb-operate: #7b4fa3;
+  --color-pb-thin-bg: #fbefd5;
+  --color-pb-thin-ink: #7a4b06;
+  --color-pb-judg-bg: #e3e8f0;
+  --color-pb-judg-ink: #3b4a63;
+  --color-pb-check-bg: #f8e1e1;
+  --color-pb-check-ink: #8a2a2a;
 }
 
 body {
