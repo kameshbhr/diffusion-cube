@@ -18,3 +18,30 @@ export function firstPhaseByJob(phases: PlaybookPhase[]): Map<string, PlaybookPh
   for (const phase of phases) for (const code of phase.jobs) if (!out.has(code)) out.set(code, phase);
   return out;
 }
+
+/** First sentence of a job's "when", trimmed for a list row or card. */
+export function shortWhen(when: string | undefined): string {
+  if (!when) return '';
+  const first = when.split(/(?<=\.)\s/)[0] ?? when;
+  return first.length > 110 ? `${first.slice(0, 107).trimEnd()}…` : first;
+}
+
+/** "Stage 3: Scope definition, …" -> "Scope definition, …" (plain words first). */
+export function phaseTitle(name: string): string {
+  return name.replace(/^Stage\s+\d+\s*:\s*/i, '');
+}
+
+/** Key for a checklist row's stage: "Stage 3" -> "stage 3". */
+export function stageKey(stage: string): string {
+  return stage.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+/** Maps a checklist row's stage ("Stage 3") to the plain title of that step. */
+export function stageTitles(phases: PlaybookPhase[]): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const p of phases) {
+    const m = p.name.match(/^Stage\s+\d+/i);
+    if (m) out.set(stageKey(m[0]), phaseTitle(p.name));
+  }
+  return out;
+}

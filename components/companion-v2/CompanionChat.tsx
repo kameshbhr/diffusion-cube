@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import WikiMarkdown from '@/components/WikiMarkdown';
 import { useCompanionChat } from '@/lib/companion-v2/use-companion-chat';
-import type { JobState } from '@/lib/companion-v2/types';
+import StateMarker from './StateMarker';
+import { shortWhen } from '@/lib/companion-v2/jobs';
 
 export interface ChatJob {
   code: string;
@@ -29,6 +30,8 @@ interface Props {
   assets: ChatAsset[];
   /** From "Ask Cube about this job" (?job=CODE). */
   initialJob?: string | null;
+  /** From the sidebar's Recent conversations (?c=ID); null opens the latest. */
+  conversationParam?: string | null;
 }
 
 const CHIPS = [
@@ -38,19 +41,7 @@ const CHIPS = [
   'What usually goes wrong, and how do I avoid it?',
 ];
 
-const STATE_LABEL: Record<JobState, string> = {
-  discussed: 'Discussed',
-  in_progress: 'In progress',
-  done: 'Done',
-  skipped: 'Skipped',
-};
-
-function shortWhen(when: string): string {
-  const first = when.split(/(?<=\.)\s/)[0] ?? when;
-  return first.length > 110 ? `${first.slice(0, 107).trimEnd()}…` : first;
-}
-
-export default function CompanionChat({ slug, playbookId, memberId, jobs, assets, initialJob }: Props) {
+export default function CompanionChat({ slug, playbookId, memberId, jobs, assets, initialJob, conversationParam }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const jobByCode = useMemo(() => new Map(jobs.map((j) => [j.code, j])), [jobs]);
@@ -58,30 +49,47 @@ export default function CompanionChat({ slug, playbookId, memberId, jobs, assets
 
   const jobCodes = useMemo(() => jobs.map((j) => j.code), [jobs]);
   const assetIds = useMemo(() => assets.map((a) => a.id), [assets]);
-  const chat = useCompanionChat({ playbookId, memberId, jobCodes, assetIds });
+  const chat = useCompanionChat({
+    playbookId,
+    memberId,
+    jobCodes,
+    assetIds,
+    requestedConversationId: conversationParam,
+  });
 
   const [draft, setDraft] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // On first load: answer "Ask Cube about this job", or let Cube open an
-  // empty conversation.
-  const opened = useRef(false);
-  const { ready, send, kickoff } = chat;
+  // Each time a conversation is opened: on the first one, answer "Ask Cube
+  // about this job" if asked; otherwise let Cube open an empty conversation.
+  const openedFor = useRef<string | null>(null);
+  const jobHandled = useRef(false);
+  // If a turn is still running (e.g. the user switched conversations while
+  // Cube was answering), wait for it to finish and then try again.
+  const { ready, send, kickoff, busy, conversationId } = chat;
   useEffect(() => {
-    if (!ready || opened.current) return;
-    opened.current = true;
-    const job = initialJob ? jobByCode.get(initialJob) : undefined;
+    if (!ready || busy || ready.id !== conversationId || openedFor.current === ready.id) return;
+    openedFor.current = ready.id;
+    const job = !jobHandled.current && initialJob ? jobByCode.get(initialJob) : undefined;
     if (job) {
+      jobHandled.current = true;
       router.replace(pathname);
       const text = `Tell me about "${job.name}".`;
       send(text, { focusJob: job.code }).then((result) => {
         if (result === false) setDraft(text);
+        if (result === null) {
+          jobHandled.current = false; // never started: try again
+          openedFor.current = null;
+        }
       });
     } else {
-      kickoff(ready);
+      jobHandled.current = true;
+      kickoff(ready).then((result) => {
+        if (result === null) openedFor.current = null; // never started: try again
+      });
     }
-  }, [ready, initialJob, jobByCode, kickoff, send, router, pathname]);
+  }, [ready, busy, conversationId, initialJob, jobByCode, kickoff, send, router, pathname]);
 
   // Keep the newest message in view.
   const lastContent = chat.messages[chat.messages.length - 1]?.content;
@@ -116,7 +124,10 @@ export default function CompanionChat({ slug, playbookId, memberId, jobs, assets
       <div className="mb-3 flex items-center justify-end">
         <button
           type="button"
-          onClick={() => chat.startNewConversation()}
+          onClick={async () => {
+            const id = await chat.startNewConversation();
+            if (id) router.push(`${pathname}?c=${id}`);
+          }}
           disabled={chat.busy || chat.loading || !hasUserMessage}
           className="text-xs text-pb-muted transition hover:text-pb-accent disabled:opacity-0"
         >
@@ -152,9 +163,9 @@ export default function CompanionChat({ slug, playbookId, memberId, jobs, assets
                 </div>
               )}
 
-              {!!m.ui?.focusJobs.length && (
+              {!!(m.ui?.focusJobs.length || m.ui?.openJob) && (
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {m.ui.focusJobs.map((code) => {
+                  {[...new Set([...(m.ui.openJob ? [m.ui.openJob] : []), ...m.ui.focusJobs])].map((code) => {
                     const job = jobByCode.get(code);
                     if (!job) return null;
                     const state = chat.jobStates[code];
@@ -177,7 +188,11 @@ export default function CompanionChat({ slug, playbookId, memberId, jobs, assets
                           )}
                         </span>
                         <span className="mt-1 block text-xs leading-snug text-pb-muted">{shortWhen(job.when)}</span>
-                        {state && <span className="mt-1.5 block text-[11px] text-pb-deliver">{STATE_LABEL[state]}</span>}
+                        {state && (
+                          <span className="mt-1.5 block">
+                            <StateMarker state={state} />
+                          </span>
+                        )}
                       </Link>
                     );
                   })}

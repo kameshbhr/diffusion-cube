@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import SignOutButton from '@/components/SignOutButton';
@@ -8,6 +8,7 @@ import { useConfirm } from '@/components/ConfirmDialog';
 import { showToast } from '@/lib/toast';
 import { createClient } from '@/lib/supabase/client';
 import { isCube2 } from '@/lib/flags';
+import RecentConversations from '@/components/companion-v2/RecentConversations';
 
 interface AdoptionSummary {
   id: string;
@@ -175,6 +176,15 @@ export default function Sidebar({ email, adoptions, isAdmin }: Props) {
       </nav>
 
       <div className="flex-1 overflow-y-auto px-3 pb-3">
+        {/* Cube 2.0: the user's own companion conversations, in place of
+            Cube 1.0's Recent Explorations. */}
+        {isCube2 && email && (
+          <Suspense>
+            {/* Close the mobile drawer on a pick, including a ?c= change on the
+                same page, which the pathname check below can't see. */}
+            <RecentConversations onNavigate={() => setMobileOpen(false)} />
+          </Suspense>
+        )}
         {recentExplorations.length > 0 && (
           <>
             <p className="mt-2 mb-1 px-3 font-mono text-[10px] uppercase tracking-[0.15em] text-ink-soft">

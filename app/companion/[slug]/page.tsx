@@ -9,10 +9,10 @@ export default async function WorkspaceHome({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ job?: string }>;
+  searchParams: Promise<{ job?: string; c?: string }>;
 }) {
   const { slug } = await params;
-  const { job } = await searchParams;
+  const { job, c } = await searchParams;
   const { playbook, member } = await getWorkspace(slug);
   const { supabase } = await getViewer();
 
@@ -42,6 +42,7 @@ export default async function WorkspaceHome({
       jobs={jobs}
       assets={assets}
       initialJob={typeof job === 'string' ? job : null}
+      conversationParam={typeof c === 'string' ? c : null}
     />
   );
 }

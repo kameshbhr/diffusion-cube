@@ -25,7 +25,11 @@ export default async function CompanionLayout({ children }: { children: React.Re
 
   return (
     <AppShell email={email} adoptions={[]} isAdmin={isAdmin}>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-pb-bg text-pb-ink">{children}</div>
+      {/* data-scroll-root: the companion's scroll container (the body doesn't
+          scroll in AppShell); the job sheet locks it while open. */}
+      <div data-scroll-root className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-pb-bg text-pb-ink">
+        {children}
+      </div>
     </AppShell>
   );
 }
