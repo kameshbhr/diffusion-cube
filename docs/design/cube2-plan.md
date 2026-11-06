@@ -263,6 +263,7 @@ It returns `system` as content blocks, with the stable prefix first:
   - **On a 429:** the daily-limit message shows, with no retry.
 - **Conversation scope.** Home opens the member's latest conversation.
   - A **"Start a new conversation"** button creates a fresh conversation whose `context` is copied from the previous one. Cube therefore remembers the situation but skips the intake questions.
+  - **Changed on 2026-11-06 (your feedback):** the button is gone. Opening a playbook from the playbook list (`?c=new`) starts the new conversation instead, with the same context carried over; if the latest conversation has nothing from the person yet, it is reused. The Converse tab and "Ask Cube about this job" still open the latest conversation. The tabs are now **Converse** and **View Jobs**; the Owns/Tracks tag is no longer shown in the job detail header or on the job cards in chat (it stays in the View Jobs list).
   - Job states belong to the member, not the conversation, so they carry over automatically.
   - **Recent conversations in the sidebar** (decided 2026-11-05, built in Slice 3): under **Companion**, the signed-in user's own conversations, newest first, as Cube 1.0 lists Recent Explorations.
     - Each entry is labelled with the start of the user's first message, plus the playbook name when there is more than one playbook. A conversation with no user message yet shows "New conversation".

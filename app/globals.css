@@ -34,7 +34,7 @@
   /* Cube 2.0 companion: the calm light palette of the playbook HTML
      prototype (docs/design/low-resource-language-ai-adoption-playbook.html).
      Light only, as the spec asks. Used as bg-pb-*, text-pb-*, border-pb-*. */
-  --color-pb-bg: #f2f4f6;
+  --color-pb-bg: #faf9f6; /* same as the sidebar (paper) */
   --color-pb-surface: #ffffff;
   --color-pb-ink: #18212b;
   --color-pb-muted: #5b6672;

@@ -11,6 +11,7 @@
 //
 // Which conversation is shown: the one asked for (?c= from the sidebar) if it
 // is the user's own, otherwise the latest; a new one is created if none exist.
+// ?c=new (opening the playbook from the list) starts a new conversation.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -53,6 +54,9 @@ export interface ConversationsChangedDetail {
 export const notifyConversationsChanged = (detail: ConversationsChangedDetail = {}) => {
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(CONVERSATIONS_CHANGED, { detail }));
 };
+
+/** requestedConversationId that starts a new conversation (?c=new, from the playbook list). */
+export const NEW_CONVERSATION = 'new';
 
 let localId = 0;
 const nextId = () => `local-${++localId}`;
@@ -192,16 +196,35 @@ export function useCompanionChat({ playbookId, memberId, jobCodes, assetIds, req
   const load = useCallback(
     async (requested: string | null | undefined, isCancelled: () => boolean): Promise<LoadedConversation | null> => {
       const key = requested || 'latest';
+      const fresh = requested === NEW_CONVERSATION;
       const pick = supabase
         .from('companion_conversations')
         .select('id, context')
         .eq('member_id', memberId)
         .eq('playbook_id', playbookId);
-      let { data: conv } = requested
-        ? await pick.eq('id', requested).maybeSingle()
-        : await pick.order('updated_at', { ascending: false }).limit(1).maybeSingle();
+      let { data: conv } =
+        requested && !fresh
+          ? await pick.eq('id', requested).maybeSingle()
+          : await pick.order('updated_at', { ascending: false }).limit(1).maybeSingle();
+      // A new conversation (the playbook was opened from the list) keeps what
+      // Cube knows about the situation. If the latest one has nothing from the
+      // person yet (only Cube's greeting, or empty), it is reused instead, so
+      // opening and leaving doesn't pile up empty conversations.
+      let carryContext: CompanionContext = {};
+      if (fresh && conv) {
+        const { count } = await supabase
+          .from('companion_messages')
+          .select('id', { count: 'exact', head: true })
+          .eq('conversation_id', conv.id)
+          .eq('role', 'user');
+        if (isCancelled()) return null;
+        if ((count ?? 0) > 0) {
+          carryContext = (conv.context ?? {}) as CompanionContext;
+          conv = null;
+        }
+      }
       // Not the user's own, or deleted: fall back to the latest.
-      if (!conv && requested) {
+      if (!conv && requested && !fresh) {
         ({ data: conv } = await supabase
           .from('companion_conversations')
           .select('id, context')
@@ -222,7 +245,7 @@ export function useCompanionChat({ playbookId, memberId, jobCodes, assetIds, req
       if (!id) {
         const { data: created, error } = await supabase
           .from('companion_conversations')
-          .insert({ member_id: memberId, playbook_id: playbookId })
+          .insert({ member_id: memberId, playbook_id: playbookId, context: carryContext })
           .select('id, context')
           .single();
         if (error || !created) {
@@ -311,31 +334,6 @@ export function useCompanionChat({ playbookId, memberId, jobCodes, assetIds, req
     [runTurn]
   );
 
-  /**
-   * Creates a fresh conversation that keeps what Cube knows about the
-   * situation, and returns its id. The caller opens it (?c=), which loads it
-   * and lets Cube greet.
-   */
-  const startNewConversation = useCallback(async (): Promise<string | null> => {
-    if (busyRef.current) return null;
-    busyRef.current = true;
-    setBusy(true);
-    setError(null);
-    const { data: created, error } = await supabase
-      .from('companion_conversations')
-      .insert({ member_id: memberId, playbook_id: playbookId, context })
-      .select('id')
-      .single();
-    busyRef.current = false;
-    setBusy(false);
-    if (error || !created) {
-      setError({ kind: 'retry', text: '', message: "Couldn't start a new conversation. Please try again." });
-      return null;
-    }
-    notifyConversationsChanged();
-    return created.id as string;
-  }, [context, memberId, playbookId, supabase]);
-
   const retry = useCallback(async (): Promise<boolean | null> => {
     if (!error || error.kind !== 'retry' || !conversationId) return null;
     const history = messages.filter((m) => !m.pending);
@@ -354,7 +352,6 @@ export function useCompanionChat({ playbookId, memberId, jobCodes, assetIds, req
     send,
     kickoff,
     retry,
-    startNewConversation,
     dismissError: () => setError(null),
   };
 }

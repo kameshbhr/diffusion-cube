@@ -27,7 +27,7 @@ export default async function CompanionHome() {
             <li key={p.id}>
               {/* No prefetch: opening a playbook joins it, so only a real click should. */}
               <Link
-                href={`/companion/${p.slug}`}
+                href={`/companion/${p.slug}?c=new`}
                 prefetch={false}
                 className="group block rounded-xl border border-pb-line bg-pb-surface p-5 shadow-[0_1px_2px_rgba(20,30,45,0.04)] transition hover:border-pb-accent hover:shadow-[0_6px_24px_rgba(20,30,45,0.08)]"
               >

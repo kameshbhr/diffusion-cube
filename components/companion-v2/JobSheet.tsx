@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { stageKey, tagFor } from '@/lib/companion-v2/jobs';
+import { stageKey } from '@/lib/companion-v2/jobs';
 import { JOB_STATES, type JobRow, type JobState, type JobStateRow } from '@/lib/companion-v2/types';
 import { showToast } from '@/lib/toast';
 import AssetLink, { type AssetLinkData } from './AssetLink';
@@ -45,7 +45,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 // to set; Cube never overrides them.
 export default function JobSheet({ slug, memberId, projectRole, job, assets, state, stepTitles, onStateChange, onClose }: Props) {
   const b = job.body;
-  const tag = tagFor(b, projectRole);
   const owners = b.owners ?? [];
   const closeRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -141,18 +140,6 @@ export default function JobSheet({ slug, memberId, projectRole, job, assets, sta
             <h2 id="job-sheet-title" className="font-serif text-lg font-bold leading-snug text-pb-ink">
               {job.name}
             </h2>
-            {tag && (
-              <p className="mt-1 text-xs text-pb-muted">
-                <span
-                  className={`mr-2 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                    tag === 'Owns' ? 'bg-pb-accent text-white' : 'bg-pb-accent-soft text-pb-accent'
-                  }`}
-                >
-                  {tag}
-                </span>
-                {tag === 'Owns' ? `The ${projectRole} owns this job` : `The ${projectRole} tracks this job`}
-              </p>
-            )}
           </div>
           <button
             ref={closeRef}

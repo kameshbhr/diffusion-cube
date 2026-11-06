@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import WikiMarkdown from '@/components/WikiMarkdown';
-import { useCompanionChat } from '@/lib/companion-v2/use-companion-chat';
+import { NEW_CONVERSATION, useCompanionChat } from '@/lib/companion-v2/use-companion-chat';
 import StateMarker from './StateMarker';
 import AssetLink from './AssetLink';
 import { shortWhen } from '@/lib/companion-v2/jobs';
@@ -93,6 +93,15 @@ export default function CompanionChat({ slug, playbookId, memberId, jobs, assets
     }
   }, [ready, busy, conversationId, initialJob, jobByCode, kickoff, send, router, pathname]);
 
+  // A new conversation (?c=new, from the playbook list): once it exists, put
+  // its id in the address bar, so a reload reopens it instead of starting
+  // another. replaceState keeps this page as it is (no refetch).
+  useEffect(() => {
+    if (conversationParam === NEW_CONVERSATION && ready?.id) {
+      window.history.replaceState(null, '', `${pathname}?c=${ready.id}`);
+    }
+  }, [conversationParam, ready?.id, pathname]);
+
   // Keep the newest message in view.
   const lastContent = chat.messages[chat.messages.length - 1]?.content;
   useEffect(() => {
@@ -123,20 +132,6 @@ export default function CompanionChat({ slug, playbookId, memberId, jobs, assets
 
   return (
     <div className="flex min-h-[60vh] flex-1 flex-col">
-      <div className="mb-3 flex items-center justify-end">
-        <button
-          type="button"
-          onClick={async () => {
-            const id = await chat.startNewConversation();
-            if (id) router.push(`${pathname}?c=${id}`);
-          }}
-          disabled={chat.busy || chat.loading || !hasUserMessage}
-          className="text-xs text-pb-muted transition hover:text-pb-accent disabled:opacity-0"
-        >
-          Start a new conversation
-        </button>
-      </div>
-
       <div className="flex-1 space-y-5" aria-live="polite">
         {chat.loading && <p className="text-sm text-pb-muted">Opening your conversation…</p>}
 
@@ -179,15 +174,6 @@ export default function CompanionChat({ slug, playbookId, memberId, jobs, assets
                       >
                         <span className="flex items-start justify-between gap-2">
                           <span className="text-sm font-medium text-pb-ink">{job.name}</span>
-                          {job.tag && (
-                            <span
-                              className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                                job.tag === 'Owns' ? 'bg-pb-accent text-white' : 'bg-pb-accent-soft text-pb-accent'
-                              }`}
-                            >
-                              {job.tag}
-                            </span>
-                          )}
                         </span>
                         <span className="mt-1 block text-xs leading-snug text-pb-muted">{shortWhen(job.when)}</span>
                         {state && (

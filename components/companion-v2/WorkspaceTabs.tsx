@@ -15,8 +15,8 @@ export default function WorkspaceTabs({ slug, isContributor }: Props) {
   const base = `/companion/${slug}`;
 
   const tabs = [
-    { href: base, label: 'Home', exact: true },
-    { href: `${base}/jobs`, label: 'Jobs' },
+    { href: base, label: 'Converse', exact: true },
+    { href: `${base}/jobs`, label: 'View Jobs' },
     ...(isContributor
       ? [
           { href: `${base}/playbook`, label: 'Playbook' },

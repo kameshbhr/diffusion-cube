@@ -16,14 +16,17 @@ export default async function WorkspaceLayout({
   return (
     <div className="flex min-h-full flex-col">
       <header className="border-b border-pb-line bg-pb-surface">
-        <div className="mx-auto w-full max-w-5xl px-4 pt-5 sm:px-8">
-          <Link href="/companion" className="text-xs text-pb-muted transition hover:text-pb-accent">
-            ← All playbooks
-          </Link>
-          <h1 className="mt-1.5 font-serif text-xl font-bold leading-snug text-pb-ink sm:text-2xl">
-            {playbook.title}
-          </h1>
-          <div className="mt-3">
+        <div className="mx-auto w-full max-w-5xl px-4 pt-3 sm:px-8">
+          <div className="flex items-start justify-between gap-4">
+            <h1 className="font-serif text-lg font-bold leading-snug text-pb-ink sm:text-xl">{playbook.title}</h1>
+            <Link
+              href="/companion"
+              className="mt-1 flex-shrink-0 whitespace-nowrap text-xs text-pb-muted transition hover:text-pb-accent"
+            >
+              ← All playbooks
+            </Link>
+          </div>
+          <div className="mt-1">
             <WorkspaceTabs slug={playbook.slug} isContributor={member.member_role === 'contributor'} />
           </div>
         </div>
