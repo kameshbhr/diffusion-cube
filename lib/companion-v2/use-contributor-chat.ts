@@ -1,6 +1,6 @@
 'use client';
 
-// Update with Cube: the contributor's chat. Nothing is stored anywhere. The
+// The contributor's chat (their Converse tab). Nothing is stored anywhere. The
 // conversation lives in React state, the history is sent with each request,
 // and uploaded file text is sent once, with the turn it belongs to.
 //
@@ -44,7 +44,7 @@ export type ContributorError = { kind: 'retry' | 'limit'; message: string };
 let seq = 0;
 const nextId = () => `c${Date.now().toString(36)}-${seq++}`;
 
-const DEFAULT_FILE_REQUEST = 'Update the playbook and the source document from these files.';
+const DEFAULT_FILE_REQUEST = 'Update the playbook from these files.';
 const FAILED = "Cube couldn't answer just now. Please try again.";
 
 /** The history the model sees: replies with a note on what became of each proposal. */
@@ -64,7 +64,7 @@ function toHistory(messages: ContributorMessage[], base: Snapshot): { role: 'use
         const labels = p.ops.map((op) => opLabel(op, base)).join('; ');
         const fate =
           m.status === 'applied'
-            ? 'The contributor applied the changes they kept; the playbook and source document you see now include them.'
+            ? 'The contributor applied the changes they kept; the playbook you see now includes them.'
             : m.status === 'discarded'
               ? 'The contributor discarded them.'
               : 'The contributor has not applied them yet.';
@@ -140,7 +140,7 @@ export function useContributorChat({ playbookId, base, updatedAt }: { playbookId
     }
     if (res.status === 429) {
       const data = await res.json().catch(() => ({}));
-      return { ok: false, kind: 'limit', message: data.message ?? "You've reached today's limit for Update with Cube." };
+      return { ok: false, kind: 'limit', message: data.message ?? "You've reached today's limit for messages to Cube." };
     }
     if (!res.ok || !res.body) {
       const data = await res.json().catch(() => ({}));

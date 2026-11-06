@@ -127,7 +127,7 @@ export function modelOpProblem(op: unknown, base: Snapshot): string | null {
   if (typeof name !== 'string') return 'This change has no type.';
   if (name === 'job.remove') return 'Removing a job is done on the Playbook screen (open the job, then Edit).';
   if (name === 'phase.remove') return 'Removing a step is done on the Playbook screen (Sequence tab).';
-  if (name === 'source.set') return 'Cube doesn’t replace the whole source document; edit it on the Source document screen.';
+  if (name === 'source.set') return 'Cube doesn’t replace all of the detailed guidance at once; ask it to change one section at a time.';
   if (!MODEL_OPS.has(name)) return `Unknown change "${name}".`;
   // A whole-list job.set may only clear or reorder; items change one at a time.
   if (name === 'job.set' && typeof o.field === 'string' && LIST_FIELDS.includes(o.field) && Array.isArray(o.value) && o.value.length) {

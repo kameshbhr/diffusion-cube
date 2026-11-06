@@ -16,12 +16,9 @@ interface Props {
   base: Snapshot;
   /** updated_at exactly as loaded; a save fails as stale if it has moved. */
   updatedAt: string;
-  /** Opened from the Source document screen's "Update from files". */
-  fromFiles?: boolean;
 }
 
-const CHIPS = ['Edit a job', 'Edit the overview, roles, sequence or rules', 'Edit the source document'] as const;
-const FILES_CHIP = 'Update from files';
+const CHIPS = ['Edit a job', 'Edit the overview, roles, sequence or rules', "What's missing from the playbook?"] as const;
 const ACCEPT = '.pdf,.docx,.pptx,.xlsx,.xls,.md,.txt';
 
 interface Attachment {
@@ -34,10 +31,10 @@ interface Attachment {
 
 let attachSeq = 0;
 
-// Update with Cube: ask for a change, or upload files; Cube proposes changes,
-// shown as a diff under its reply. Nothing changes until Apply, and this
-// conversation is never saved.
-export default function ContributorChat({ playbookId, base, updatedAt, fromFiles }: Props) {
+// The contributor's Converse tab: ask about the playbook, ask for a change, or
+// add files with "+"; Cube proposes changes, shown as a diff under its reply.
+// Nothing changes until Apply, and this conversation is never saved.
+export default function ContributorChat({ playbookId, base, updatedAt }: Props) {
   const router = useRouter();
   const { confirm, dialog } = useConfirm();
   const chat = useContributorChat({ playbookId, base, updatedAt });
@@ -137,8 +134,8 @@ export default function ContributorChat({ playbookId, base, updatedAt, fromFiles
       {dialog}
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-[62ch] text-sm leading-relaxed text-pb-muted">
-          Ask Cube to change the playbook or the source document, or give it files to update from. Each change is shown as a diff
-          first; nothing changes until you apply it. This conversation isn’t saved.
+          Ask Cube about the playbook or ask it to change something. To update the playbook from documents, add them with +. Each
+          change is shown first; nothing changes until you apply it. This conversation isn’t saved.
         </p>
         {chat.messages.length > 0 && (
           <button type="button" onClick={startOver} className="text-xs text-pb-muted transition hover:text-pb-accent">
@@ -148,22 +145,6 @@ export default function ContributorChat({ playbookId, base, updatedAt, fromFiles
       </div>
 
       <div className="flex-1 space-y-6">
-        {fromFiles && chat.messages.length === 0 && attachments.length === 0 && (
-          <div className="rounded-xl border border-pb-accent bg-pb-surface px-5 py-4">
-            <p className="text-sm text-pb-ink">
-              Choose the files to update from. Cube reads them, compares them with the playbook and the source document, and proposes
-              changes for you to review. The files aren’t stored.
-            </p>
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="mt-3 rounded-lg bg-pb-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-            >
-              Choose files
-            </button>
-          </div>
-        )}
-
         {chat.messages.map((m) =>
           m.role === 'user' ? (
             <div key={m.id} className="flex flex-col items-end gap-1.5">
@@ -227,13 +208,6 @@ export default function ContributorChat({ playbookId, base, updatedAt, fromFiles
                 {c}
               </button>
             ))}
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="rounded-full border border-pb-line bg-pb-surface px-3.5 py-1.5 text-left text-sm text-pb-ink transition hover:border-pb-accent hover:bg-pb-accent-soft"
-            >
-              {FILES_CHIP}
-            </button>
           </div>
         )}
 

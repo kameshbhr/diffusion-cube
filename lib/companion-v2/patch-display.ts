@@ -112,19 +112,19 @@ export function opLabel(op: PatchOp, s: Snapshot): string {
     case 'rules.set':
       return 'Hard rules';
     case 'source.replace_section':
-      return `Source document → replace section "${op.heading.replace(/^#+\s*/, '')}"`;
+      return `Playbook → detailed guidance: rewrite "${op.heading.replace(/^#+\s*/, '')}"`;
     case 'source.append_to_section':
-      return `Source document → add to section "${op.heading.replace(/^#+\s*/, '')}"`;
+      return `Playbook → detailed guidance: add to "${op.heading.replace(/^#+\s*/, '')}"`;
     case 'source.add_section':
-      return `Source document → new section "${op.heading.replace(/^#+\s*/, '')}"`;
+      return `Playbook → detailed guidance: new section "${op.heading.replace(/^#+\s*/, '')}"`;
     case 'source.replace':
-      return 'Source document → change wording';
+      return 'Playbook → detailed guidance: change wording';
     case 'source.insert_after':
-      return 'Source document → insert text';
+      return 'Playbook → detailed guidance: add text';
     case 'source.append':
-      return 'Source document → add at the end';
+      return 'Playbook → detailed guidance: add at the end';
     case 'source.set':
-      return 'Source document';
+      return 'Playbook → detailed guidance';
   }
 }
 

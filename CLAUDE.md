@@ -152,17 +152,17 @@ Auth (email and password, OTP signup and reset), `proxy.ts`, `lib/roles.ts`, Sup
 
 ### Three separate knowledge parts
 1. **Structured playbook** (jobs with `when` and checklist tasks, the 13-stage sequence, overview, short "how" per job) answers "what next, who, when, why". It is authoritative for sequencing.
-2. **One source document** (markdown, living) gives depth on "how" and answers follow-ups. It is loaded **whole** into the cached prompt. No retrieval or embeddings in v1. No document citations in answers.
+2. **One source document** (markdown, living) gives depth on "how" and answers follow-ups. It is loaded **whole** into the cached prompt. No retrieval or embeddings in v1. No document citations in answers. **It is not shown in the app** (decided 2026-11-06, because later there may be several detail documents): to users everything is "the playbook". Prompts and UI text never call it a source document; contributors see changes to it labelled "Playbook → detailed guidance".
 3. **Assets** (files or links, tagged by job) are shown inside the relevant job and offered in chat. Cube sees only title, description and job tags, never the file contents.
 
 Uploaded update files are **not** loaded into the prompt and are **not stored**. They feed the "update from files" flow: text is extracted in the browser, the model proposes edits to the source document and jobs, and the contributor reviews the diff and applies or discards it. Proposals are not saved.
 
-If the source document and the playbook disagree, the playbook wins for sequencing and Cube says plainly that the sources differ.
+If the source document and the playbook disagree, the playbook wins for sequencing and Cube says plainly that the playbook gives different answers.
 
 ### Rules the prompts and UI must follow
 - Users are first-timers. Plain language; never use framework terms such as "work area", "job type", or job codes in user-facing text.
 - Where the playbook and the DC checklist give different figures (telephony share, minimum volume, studio hours), present both and say they differ.
-- Do not overstate. State absence plainly ("neither the playbook nor the source document covers this"); never fill gaps from general AI knowledge.
+- Do not overstate. State absence plainly ("the playbook doesn't cover this"); never fill gaps from general AI knowledge.
 - For a PMU user, say whether PMU owns or tracks a job and who owns it. Where the playbook does not state an owner, say so. Do not guess.
 - The model never writes to the DB. The client parses `<ui_action>` and persists.
 - Journey capture: `<ui_action>` may include `jobUpdates` (job code, state, one-line note). Record a state **only** from what the user said, never from your own guess. "Not discussed" is not "not done": show no marker. User corrections override Cube's. This is a reflection, not a tracker: no due dates, assignees, reminders or progress percentages.
@@ -171,7 +171,7 @@ If the source document and the playbook disagree, the playbook wins for sequenci
 - Never put content marked for removal before publication (e.g. "Only for Author") into the source document.
 - Keep CC BY 4.0 attribution to EkStep in the overview credits.
 - Adopter UI is two screens: **Home**, labelled "Converse" (chat with 4 starter chips on a new conversation: "Where do I start?", "What do I own, and what do I only track?", "How long will this take and what will it cost?", "What usually goes wrong, and how do I avoid it?"; after that, the chips are 2–3 follow-up questions Cube suggests in `<ui_action>` `suggestions`, only ones the playbook or source document can answer; Cube asks the first questions in chat, no intake form) and **Jobs**, labelled "View Jobs" (all jobs for PMU, in sequence order, each showing Who owns and Who tracks, with an Owns or Tracks tag for the user's role and state markers; a toggle for "only mine"; job detail holds the when, short how, checklist tasks (guidance only, no status), owner note, assets and "Ask Cube about this job"). No jobs map for adopters. PMU tracks all jobs and owns those where the DC checklist names PxD, PMU or the Nodal Officer's team as owner (the Nodal Officer is a separate role, so those jobs are Tracks); each job stores `owners` and `tracked_by` (PMU tracks every job), and the Owns or Tracks tag is derived from them for the user's role. A job appears for a future role if the role is in its owners or tracked_by.
-- Contributors also see the adopter screens, plus: **Playbook** (a port of the playbook HTML: Overview, Roles, Jobs map and Sequence tabs with edit controls; jobs with no owner named are flagged), **Update with Cube** (contributor chat with 4 chips: "Edit a job", "Edit the overview, roles, sequence or rules", "Edit the source document", "Update from files"), **Source document** (edit, update from files), **Assets**, **Conversations** (adopters only).
+- Contributors see four tabs (decided 2026-11-06): **Converse** (for a contributor, this is the contributor chat: ask about the playbook, ask for changes, add files with the "+" in the chat box; Cube's proposals, to jobs and/or the hidden detailed guidance, show as a diff to apply or discard; not saved; chips "Edit a job", "Edit the overview, roles, sequence or rules", "What's missing from the playbook?"), **Playbook** (a port of the playbook HTML: Overview, Roles, Jobs map and Sequence tabs with edit controls; jobs with no owner named are flagged), **Assets**, **Conversations** (adopters only). No View Jobs (the Playbook tab lists every job) and no separate Update with Cube or Source document screens.
 - Simple, calm, light theme. Use the `frontend-design` skill.
 
 ### How to work on this

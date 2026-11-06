@@ -294,7 +294,7 @@ export default function CompanionChat({ slug, playbookId, memberId, jobs, assets
           </button>
         </form>
         <p className="mt-2 text-center text-[11px] text-pb-muted">
-          Cube answers from this playbook and its source document only, and can be wrong.
+          Cube answers from this playbook only, and can be wrong.
         </p>
       </div>
     </div>

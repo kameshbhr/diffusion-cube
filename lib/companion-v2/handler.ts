@@ -86,7 +86,7 @@ export async function handleCompanionV2(body: Record<string, unknown>, supabase:
 const safeName = (n: string) => n.replace(/["<>\r\n]/g, ' ').trim().slice(0, 200) || 'file';
 
 /**
- * Update with Cube. Nothing is stored: the history comes from the client and
+ * The contributor chat (their Converse tab). Nothing is stored: the history comes from the client and
  * uploaded file text is placed in the last user turn only (never in the
  * cached system prompt, never logged). The reply ends with <playbook_patch>,
  * which the client turns into a diff for the contributor to review.
@@ -165,7 +165,7 @@ async function handleContributor(body: Record<string, unknown>, supabase: Supaba
   if (allowed === false) {
     return json(429, {
       error: 'daily_limit',
-      message: "You've reached today's limit for Update with Cube. It resets at midnight UTC.",
+      message: "You've reached today's limit for messages to Cube. It resets at midnight UTC.",
     });
   }
 

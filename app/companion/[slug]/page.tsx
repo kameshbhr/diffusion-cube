@@ -1,9 +1,12 @@
 import CompanionChat, { type ChatAsset, type ChatJob } from '@/components/companion-v2/CompanionChat';
-import { getViewer, getWorkspace } from '@/lib/companion-v2/server';
+import ContributorChat from '@/components/companion-v2/ContributorChat';
+import { getViewer, getWorkspace, loadPlaybookContent, toSnapshot } from '@/lib/companion-v2/server';
 import { tagFor } from '@/lib/companion-v2/jobs';
 import type { JobBody } from '@/lib/companion-v2/types';
 
-// Home: the adopter's chat with Cube, with the four starter chips.
+// Converse: the adopter's chat with Cube (saved, with starter and suggested
+// questions), or, for a contributor, the contributor chat (ask about the
+// playbook, ask for changes, add files; never saved).
 export default async function WorkspaceHome({
   params,
   searchParams,
@@ -14,6 +17,12 @@ export default async function WorkspaceHome({
   const { slug } = await params;
   const { job, c } = await searchParams;
   const { playbook, member } = await getWorkspace(slug);
+
+  if (member.member_role === 'contributor') {
+    const { playbook: full, jobs: allJobs } = await loadPlaybookContent(playbook.id);
+    return <ContributorChat playbookId={full.id} base={toSnapshot(full, allJobs)} updatedAt={full.updated_at} />;
+  }
+
   const { supabase } = await getViewer();
 
   const [{ data: jobRows }, { data: assetRows }] = await Promise.all([

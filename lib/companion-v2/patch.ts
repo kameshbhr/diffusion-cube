@@ -263,7 +263,7 @@ function findHeading(lines: string[], heading: string): { h: Heading; end: numbe
   const all = headings(lines);
   const want = heading.trim();
   const hits = all.filter((h) => h.text === want);
-  if (!hits.length) fail(`The heading "${want}" isn't in the source document.`);
+  if (!hits.length) fail(`The heading "${want}" isn't in the playbook's detailed guidance.`);
   if (hits.length > 1) fail(`The heading "${want}" appears ${hits.length} times; make it unique first.`);
   const h = hits[0];
   const next = all.find((x) => x.line > h.line && x.level <= h.level);
@@ -330,14 +330,14 @@ function applySource(doc: string, op: SourceOp): string {
     case 'source.replace': {
       const n = countOccurrences(doc, op.find);
       if (!op.find) fail('The text to find is empty.');
-      if (n === 0) fail("The text to replace isn't in the source document (it may have changed).");
+      if (n === 0) fail("The text to replace isn't in the playbook's detailed guidance (it may have changed).");
       if (n > 1) fail(`The text to replace appears ${n} times; it must appear exactly once.`);
       return doc.replace(op.find, () => op.replace);
     }
     case 'source.insert_after': {
       const n = countOccurrences(doc, op.find);
       if (!op.find) fail('The text to find is empty.');
-      if (n === 0) fail("The text to insert after isn't in the source document (it may have changed).");
+      if (n === 0) fail("The text to insert after isn't in the playbook's detailed guidance (it may have changed).");
       if (n > 1) fail(`The text to insert after appears ${n} times; it must appear exactly once.`);
       return doc.replace(op.find, () => `${op.find}${op.text}`);
     }
@@ -495,7 +495,7 @@ function applyOne(s: Snapshot, op: PatchOp, removedInPatch: Set<string>): void {
       s.playbook.source_doc = applySource(s.playbook.source_doc, op);
       return;
     case 'source.set':
-      if (!isStr(op.value)) fail('The source document must be text.');
+      if (!isStr(op.value)) fail('The detailed guidance must be text.');
       s.playbook.source_doc = op.value;
       return;
     default:
@@ -538,7 +538,7 @@ export function checkGuards(s: Snapshot): string[] {
     problems.push('The credits must keep the CC BY 4.0 licence and the attribution to EkStep.');
   const all = JSON.stringify(s.playbook) + JSON.stringify(s.jobs);
   if (ONLY_FOR_AUTHOR.test(all) || ONLY_FOR_AUTHOR.test(s.playbook.source_doc))
-    problems.push('Content marked "Only for Author" can\'t be published in the playbook or the source document.');
+    problems.push('Content marked "Only for Author" can\'t be published in the playbook.');
   if (!s.playbook.title.trim()) problems.push('The playbook needs a title.');
   return problems;
 }
@@ -556,7 +556,7 @@ export function checkSize(base: Snapshot, next: Snapshot): string[] {
   const after = sourceTokens(next.playbook.source_doc);
   if (after <= SOURCE_TOKEN_CAP || after <= sourceTokens(base.playbook.source_doc)) return [];
   return [
-    `This would make the source document about ${after.toLocaleString("en")} tokens, over the ${SOURCE_TOKEN_CAP.toLocaleString("en")} Cube can read whole. Shorten it first, or leave some of these changes out.`,
+    `This would make the playbook's detailed guidance about ${after.toLocaleString("en")} tokens, over the ${SOURCE_TOKEN_CAP.toLocaleString("en")} Cube can read whole. Shorten it first, or leave some of these changes out.`,
   ];
 }
 

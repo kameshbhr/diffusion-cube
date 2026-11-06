@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
 import JobsView from '@/components/companion-v2/JobsView';
 import { getViewer, getWorkspace } from '@/lib/companion-v2/server';
 import type { JobRow, JobStateRow, PlaybookSequence } from '@/lib/companion-v2/types';
@@ -8,6 +9,8 @@ import type { JobRow, JobStateRow, PlaybookSequence } from '@/lib/companion-v2/t
 export default async function JobsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const { playbook, member } = await getWorkspace(slug);
+  // Contributors see every job in the Playbook tab.
+  if (member.member_role === 'contributor') redirect(`/companion/${playbook.slug}/playbook?tab=map`);
   const { supabase } = await getViewer();
 
   const [{ data: pb }, { data: jobRows }, { data: assetRows }, { data: stateRows }] = await Promise.all([

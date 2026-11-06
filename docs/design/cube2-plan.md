@@ -304,6 +304,8 @@ The reply ends with:
 
 A heading op fails, rather than guessing, when the heading is missing or appears more than once.
 
+**Changed on 2026-11-06 (your decision):** the contributor's tabs are Converse, Playbook, Assets and Conversations. For a contributor, Converse is this chat (questions, change requests, and files through the "+" in the chat box); the separate Update with Cube and Source document screens, and the "Download source document" button, are removed, and View Jobs redirects a contributor to the Playbook tab. The source document is no longer shown anywhere: later there may be several detail documents, so it isn't presented as one consolidated doc. Cube still updates it with the same ops; prompts call it "the playbook's detailed guidance", and diff cards are labelled "Playbook → detailed guidance: …". Adopters are told "the playbook doesn't cover this" rather than naming two sources. Backups of the source document now come only from `scripts/cube2/export-db.mjs`.
+
 Decided in Slice 4d:
 - **Long text travels outside the JSON.** In a live test, Cube's markdown for a section rewrite contained quotation marks that broke the JSON. Any op value may now be `{"block":N}`, with the text after the patch block in `<patch_text id="N">…</patch_text>`, so markdown needs no escaping. The client fills the blocks in before review; a missing block makes that change fail visibly.
 - **Cube sees the playbook as its exact canonical JSON** (the same serializer as the download), not the adopters' rendered markdown, so field names, list positions and `expect` texts match what the ops use.

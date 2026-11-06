@@ -16,16 +16,14 @@ export default function WorkspaceTabs({ slug, isContributor }: Props) {
 
   const tabs = [
     { href: base, label: 'Converse', exact: true },
-    { href: `${base}/jobs`, label: 'View Jobs' },
+    // Contributors see every job in the Playbook tab; View Jobs is the adopter's.
     ...(isContributor
       ? [
           { href: `${base}/playbook`, label: 'Playbook' },
-          { href: `${base}/update`, label: 'Update with Cube' },
-          { href: `${base}/source`, label: 'Source document' },
           { href: `${base}/assets`, label: 'Assets' },
           { href: `${base}/conversations`, label: 'Conversations' },
         ]
-      : []),
+      : [{ href: `${base}/jobs`, label: 'View Jobs' }]),
   ];
 
   return (

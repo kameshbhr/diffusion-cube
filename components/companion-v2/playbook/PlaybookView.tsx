@@ -126,7 +126,6 @@ export default function PlaybookView({ playbook, jobs }: { playbook: PlaybookRow
       }),
       'application/json'
     );
-  const downloadSource = () => download(`${playbook.slug}-${date}.source.md`, playbook.source_doc, 'text/markdown');
 
   return (
     <div className="text-[15px] leading-[1.55] text-pb-ink">
@@ -146,13 +145,6 @@ export default function PlaybookView({ playbook, jobs }: { playbook: PlaybookRow
             title="A backup of the playbook in the format the seed script accepts"
           >
             Download playbook as JSON
-          </button>
-          <button
-            type="button"
-            onClick={downloadSource}
-            className="rounded-lg border border-pb-line bg-pb-surface px-3 py-1.5 transition hover:border-pb-accent"
-          >
-            Download source document
           </button>
         </div>
       </div>

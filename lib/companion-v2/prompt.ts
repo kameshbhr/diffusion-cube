@@ -259,7 +259,7 @@ export function buildContributorSystem(parts: {
     { type: 'text', text: `# The playbook (current, exact JSON)\n\n${parts.playbookJson}` },
     {
       type: 'text',
-      text: `# The source document (current)\n\n${parts.sourceDoc.trim() || '(empty)'}`,
+      text: `# The playbook's detailed guidance (current)\n\n${parts.sourceDoc.trim() || '(empty)'}`,
       cache_control: { type: 'ephemeral' },
     },
   ];
