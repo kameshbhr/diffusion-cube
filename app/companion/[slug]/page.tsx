@@ -6,7 +6,7 @@ import type { JobBody } from '@/lib/companion-v2/types';
 
 // Converse: the adopter's chat with Cube (saved, with starter and suggested
 // questions), or, for a contributor, the contributor chat (ask about the
-// playbook, ask for changes, add files; never saved).
+// playbook, ask for changes, add files; saved, but not the proposed changes).
 export default async function WorkspaceHome({
   params,
   searchParams,
@@ -20,7 +20,15 @@ export default async function WorkspaceHome({
 
   if (member.member_role === 'contributor') {
     const { playbook: full, jobs: allJobs } = await loadPlaybookContent(playbook.id);
-    return <ContributorChat playbookId={full.id} base={toSnapshot(full, allJobs)} updatedAt={full.updated_at} />;
+    return (
+      <ContributorChat
+        playbookId={full.id}
+        memberId={member.id}
+        conversationParam={typeof c === 'string' ? c : null}
+        base={toSnapshot(full, allJobs)}
+        updatedAt={full.updated_at}
+      />
+    );
   }
 
   const { supabase } = await getViewer();

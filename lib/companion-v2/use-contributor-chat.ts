@@ -1,15 +1,22 @@
 'use client';
 
-// The contributor's chat (their Converse tab). Nothing is stored anywhere. The
-// conversation lives in React state, the history is sent with each request,
-// and uploaded file text is sent once, with the turn it belongs to.
+// The contributor's chat (their Converse tab). Conversations are saved like an
+// adopter's (companion_conversations / companion_messages, through
+// record_companion_turn), so they show under Recent conversations. What is
+// saved: the messages, the names and sizes of attached files (never their
+// text), and for each proposal a one-line label per change and whether it
+// was applied or discarded. The proposed changes themselves are not saved: an
+// old proposal can be read but not applied (ask Cube again). The history is
+// sent with each request, and file text only with the turn it belongs to.
 //
 // A large upload is split into parts (chunkFiles). Each part is its own
 // request against the playbook as it is now, and the parts' proposals are
 // merged into one review list, with overlaps flagged.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import type { Snapshot } from './patch';
+import { CONVERSATIONS_CHANGED, NEW_CONVERSATION, notifyConversationsChanged, type ConversationsChangedDetail } from './use-companion-chat';
 import { opLabel } from './patch-display';
 import {
   chunkFiles,
@@ -22,6 +29,16 @@ import {
 } from './playbook-patch';
 
 export type ProposalStatus = 'open' | 'applied' | 'discarded';
+
+/** What a contributor reply stores in companion_messages.ui. Never the changes themselves. */
+export interface StoredContributorUi {
+  kind: 'contributor';
+  /** Files attached to the message this replies to: names and sizes only. */
+  files?: { name: string; chars: number }[];
+  proposal?: { summary: string; changes: string[]; status: ProposalStatus };
+  question?: string | null;
+  notes?: string[];
+}
 
 export interface ContributorMessage {
   id: string;
@@ -37,6 +54,10 @@ export interface ContributorMessage {
   /** Shown under the reply, e.g. a part that failed or the daily limit. */
   notes?: string[];
   pending?: boolean;
+  /** The stored row of this reply (to record applied or discarded). */
+  dbId?: string;
+  /** What was stored for this reply; for a reply loaded from an earlier visit, all there is. */
+  stored?: StoredContributorUi;
 }
 
 export type ContributorError = { kind: 'retry' | 'limit'; message: string };
@@ -59,8 +80,18 @@ function toHistory(messages: ContributorMessage[], base: Snapshot): { role: 'use
         return { role: 'user' as const, content: `${m.content}${files}` };
       }
       const p = m.proposal;
+      const kept = m.stored?.proposal;
       let note = '';
-      if (p?.ops.length) {
+      if (!p && kept?.changes.length) {
+        const fate =
+          kept.status === 'applied'
+            ? 'The contributor applied the changes they kept.'
+            : kept.status === 'discarded'
+              ? 'The contributor discarded them.'
+              : 'They were not applied, and are no longer available.';
+        note = `\n\n[You proposed ${kept.changes.length} change${kept.changes.length === 1 ? '' : 's'}: ${kept.changes.join('; ')}. ${fate}]`;
+      } else if (!p && m.stored?.question) note = `\n\n[You asked: ${m.stored.question}]`;
+      else if (p?.ops.length) {
         const labels = p.ops.map((op) => opLabel(op, base)).join('; ');
         const fate =
           m.status === 'applied'
@@ -96,8 +127,44 @@ type TurnResult =
   | { ok: true; text: string; patch: ProposedPatch | null }
   | { ok: false; kind: 'limit' | 'retry'; message: string };
 
-export function useContributorChat({ playbookId, base, updatedAt }: { playbookId: string; base: Snapshot; updatedAt: string }) {
+/** Stored rows back into messages. Files recorded on a reply belong to the message before it. */
+function fromRows(rows: { id: string; role: string; content: string; ui: unknown }[]): ContributorMessage[] {
+  const out: ContributorMessage[] = [];
+  for (const r of rows) {
+    if (r.role === 'user') {
+      out.push({ id: r.id, role: 'user', content: r.content });
+      continue;
+    }
+    const ui = r.ui && typeof r.ui === 'object' && (r.ui as StoredContributorUi).kind === 'contributor' ? (r.ui as StoredContributorUi) : undefined;
+    const prev = out[out.length - 1];
+    if (ui?.files?.length && prev?.role === 'user') prev.files = ui.files;
+    out.push({ id: r.id, role: 'assistant', content: r.content, dbId: r.id, stored: ui, notes: ui?.notes });
+  }
+  return out;
+}
+
+export function useContributorChat({
+  playbookId,
+  memberId,
+  base,
+  updatedAt,
+  requestedConversationId,
+}: {
+  playbookId: string;
+  memberId: string;
+  base: Snapshot;
+  updatedAt: string;
+  /** ?c= : a conversation id, NEW_CONVERSATION (opened from the playbook list), or null for the latest. */
+  requestedConversationId?: string | null;
+}) {
+  const [supabase] = useState(() => createClient());
   const [messages, setMessagesState] = useState<ContributorMessage[]>([]);
+  // The conversation on screen; null until the first reply of a new one is saved.
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const conversationRef = useRef<string | null>(null);
+  const requestKey = requestedConversationId || 'latest';
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const loading = loadedKey !== requestKey;
   // A mirror of the messages, so a turn can read the history it starts from.
   const messagesRef = useRef<ContributorMessage[]>([]);
   const setMessages = useCallback((next: ContributorMessage[] | ((prev: ContributorMessage[]) => ContributorMessage[])) => {
@@ -117,6 +184,116 @@ export function useContributorChat({ playbookId, base, updatedAt }: { playbookId
     baseRef.current = base;
     updatedAtRef.current = updatedAt;
   }, [base, updatedAt]);
+
+  // ---------- load the conversation asked for ----------
+  useEffect(() => {
+    let cancelled = false;
+    // From a microtask: state is only set after awaiting the database.
+    Promise.resolve().then(async () => {
+      const key = requestedConversationId || 'latest';
+      const fresh = requestedConversationId === NEW_CONVERSATION;
+      const mine = () =>
+        supabase.from('companion_conversations').select('id').eq('member_id', memberId).eq('playbook_id', playbookId);
+      let id: string | null = null;
+      if (requestedConversationId && !fresh) {
+        const { data } = await mine().eq('id', requestedConversationId).maybeSingle();
+        id = (data?.id as string | undefined) ?? null;
+      }
+      if (!id) {
+        // The latest one; for a new conversation, only if nothing was said in it yet.
+        const { data } = await mine().order('updated_at', { ascending: false }).limit(1).maybeSingle();
+        id = (data?.id as string | undefined) ?? null;
+        if (id && fresh) {
+          const { count } = await supabase
+            .from('companion_messages')
+            .select('id', { count: 'exact', head: true })
+            .eq('conversation_id', id)
+            .eq('role', 'user');
+          if ((count ?? 0) > 0) id = null;
+        }
+      }
+      let rows: { id: string; role: string; content: string; ui: unknown }[] = [];
+      if (id) {
+        const { data, error: rowsError } = await supabase
+          .from('companion_messages')
+          .select('id, role, content, ui')
+          .eq('conversation_id', id)
+          .order('created_at', { ascending: true });
+        if (rowsError) console.error('[contributor chat] could not load the conversation:', rowsError);
+        rows = data ?? [];
+      }
+      if (cancelled) return;
+      // A turn still running belongs to the conversation being left.
+      epochRef.current++;
+      abortRef.current?.abort();
+      busyRef.current = false;
+      setBusy(false);
+      setError(null);
+      conversationRef.current = id;
+      setConversationId(id);
+      setMessages(fromRows(rows));
+      setLoadedKey(key);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [requestedConversationId, memberId, playbookId, supabase, setMessages]);
+
+  // The conversation on screen was deleted (from the sidebar): start afresh.
+  useEffect(() => {
+    const onChanged = (e: Event) => {
+      const { deletedId } = ((e as CustomEvent<ConversationsChangedDetail>).detail ?? {}) as ConversationsChangedDetail;
+      if (deletedId && deletedId === conversationRef.current) {
+        conversationRef.current = null;
+        setConversationId(null);
+        setMessages([]);
+      }
+    };
+    window.addEventListener(CONVERSATIONS_CHANGED, onChanged);
+    return () => window.removeEventListener(CONVERSATIONS_CHANGED, onChanged);
+  }, [setMessages]);
+
+  /**
+   * Saves a finished turn (creating the conversation on its first reply) and
+   * returns the stored reply's id, or null if it couldn't be saved.
+   */
+  async function saveTurn(userText: string, reply: string, ui: StoredContributorUi): Promise<string | null> {
+    let id = conversationRef.current;
+    if (!id) {
+      const { data, error: createError } = await supabase
+        .from('companion_conversations')
+        .insert({ member_id: memberId, playbook_id: playbookId })
+        .select('id')
+        .single();
+      if (createError || !data) {
+        console.error('[contributor chat] could not start a conversation:', createError);
+        return null;
+      }
+      id = data.id as string;
+      conversationRef.current = id;
+      setConversationId(id);
+    }
+    const { error: saveError } = await supabase.rpc('record_companion_turn', {
+      p_conversation_id: id,
+      p_user_text: userText,
+      p_assistant_text: reply,
+      p_ui: ui,
+    });
+    if (saveError) {
+      console.error('[contributor chat] could not save the turn:', saveError);
+      return null;
+    }
+    notifyConversationsChanged();
+    const { data: last } = await supabase
+      .from('companion_messages')
+      .select('id')
+      .eq('conversation_id', id)
+      .eq('role', 'assistant')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return (last?.id as string | undefined) ?? null;
+  }
 
   /** One request; streams the reply text into onText. */
   async function request(
@@ -248,14 +425,30 @@ export function useContributorChat({ playbookId, base, updatedAt }: { playbookId
             overlaps: parts.length > 1 ? overlappingOps(ops, partOf) : [],
           }
         : undefined;
+      const reply = texts.join('\n\n');
+      const stored: StoredContributorUi = {
+        kind: 'contributor',
+        files: userMsg.files,
+        proposal: proposal?.ops.length
+          ? { summary: proposal.summary, changes: proposal.ops.map((op) => opLabel(op, baseRef.current)), status: 'open' }
+          : undefined,
+        question: proposal?.question ?? null,
+        notes: notes.length ? notes : undefined,
+      };
       setReply({
-        content: texts.join('\n\n'),
+        content: reply,
         proposal,
         status: proposal?.ops.length ? 'open' : undefined,
         notes: notes.length ? notes : undefined,
         madeAgainst,
+        stored,
         pending: false,
       });
+      // Saved after it is on screen; a failed save keeps the reply usable here.
+      const dbId = await saveTurn(userText, reply, stored);
+      if (!live()) return true;
+      if (dbId) setReply({ dbId });
+      else setReply({ notes: [...notes, 'This reply couldn’t be saved to your conversations. You can still apply its changes now.'] });
       return true;
     } catch (err) {
       // Aborted by reset() or by leaving the page: the chat it belonged to is
@@ -273,9 +466,24 @@ export function useContributorChat({ playbookId, base, updatedAt }: { playbookId
     }
   }
 
-  const setStatus = useCallback((id: string, status: ProposalStatus) => {
-    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, status } : m)));
-  }, [setMessages]);
+  /** Marks a proposal applied or discarded, here and in the stored reply. */
+  const setStatus = useCallback(
+    (id: string, status: ProposalStatus) => {
+      const m = messagesRef.current.find((x) => x.id === id);
+      const stored = m?.stored?.proposal ? { ...m.stored, proposal: { ...m.stored.proposal, status } } : m?.stored;
+      setMessages((prev) => prev.map((x) => (x.id === id ? { ...x, status, stored } : x)));
+      if (m?.dbId && stored) {
+        supabase
+          .from('companion_messages')
+          .update({ ui: stored })
+          .eq('id', m.dbId)
+          .then(({ error: updateError }) => {
+            if (updateError) console.error('[contributor chat] could not record the outcome:', updateError);
+          });
+      }
+    },
+    [setMessages, supabase]
+  );
 
   // Leaving the screen (a client-side navigation, so no beforeunload) stops
   // the turn, including any upload parts not yet sent.
@@ -297,5 +505,5 @@ export function useContributorChat({ playbookId, base, updatedAt }: { playbookId
     setMessages([]);
   }, [setMessages]);
 
-  return { messages, busy, error, send, setStatus, reset, clearError: () => setError(null) };
+  return { messages, busy, error, loading, conversationId, send, setStatus, reset, clearError: () => setError(null) };
 }

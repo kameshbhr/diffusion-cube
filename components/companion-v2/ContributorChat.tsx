@@ -1,18 +1,20 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import WikiMarkdown from '@/components/WikiMarkdown';
 import PatchReview from './PatchReview';
-import { useConfirm } from '@/components/ConfirmDialog';
 import { showToast } from '@/lib/toast';
 import { useLeaveWarning } from '@/lib/companion-v2/leave-warning';
 import type { Snapshot } from '@/lib/companion-v2/patch';
-import { useContributorChat, type ContributorMessage } from '@/lib/companion-v2/use-contributor-chat';
+import { useContributorChat, type ContributorMessage, type StoredContributorUi } from '@/lib/companion-v2/use-contributor-chat';
 import { approxTokens, chunkFiles, MAX_UPLOAD_CHARS, type UploadedText } from '@/lib/companion-v2/playbook-patch';
 
 interface Props {
   playbookId: string;
+  memberId: string;
+  /** ?c= : a conversation id, "new" (opened from the playbook list), or null for the latest. */
+  conversationParam: string | null;
   base: Snapshot;
   /** updated_at exactly as loaded; a save fails as stale if it has moved. */
   updatedAt: string;
@@ -34,10 +36,19 @@ let attachSeq = 0;
 // The contributor's Converse tab: ask about the playbook, ask for a change, or
 // add files with "+"; Cube proposes changes, shown as a diff under its reply.
 // Nothing changes until Apply, and this conversation is never saved.
-export default function ContributorChat({ playbookId, base, updatedAt }: Props) {
+export default function ContributorChat({ playbookId, memberId, conversationParam, base, updatedAt }: Props) {
   const router = useRouter();
-  const { confirm, dialog } = useConfirm();
-  const chat = useContributorChat({ playbookId, base, updatedAt });
+  const chat = useContributorChat({ playbookId, memberId, base, updatedAt, requestedConversationId: conversationParam });
+  const pathname = usePathname();
+
+  // Once the conversation on screen has an id (opened, or saved for the first
+  // time), put it in the address bar, so a reload reopens it. replaceState
+  // keeps this page as it is (no refetch).
+  useEffect(() => {
+    if (chat.conversationId && conversationParam !== chat.conversationId) {
+      window.history.replaceState(null, '', `${pathname}?c=${chat.conversationId}`);
+    }
+  }, [chat.conversationId, conversationParam, pathname]);
   const [draft, setDraft] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [refreshing, startRefresh] = useTransition();
@@ -114,37 +125,18 @@ export default function ContributorChat({ playbookId, base, updatedAt }: Props) 
     textareaRef.current?.focus();
   }
 
-  async function startOver() {
-    if (openProposals) {
-      const yes = await confirm({
-        title: 'Start over?',
-        message: 'Changes Cube proposed that you haven’t applied will be lost.',
-        confirmLabel: 'Start over',
-        danger: true,
-      });
-      if (!yes) return;
-    }
-    chat.reset();
-  }
-
-  const canSend = !chat.busy && !refreshing && !reading && !tooMuch && (draft.trim().length > 0 || ready.length > 0);
+  const canSend = !chat.loading && !chat.busy && !refreshing && !reading && !tooMuch && (draft.trim().length > 0 || ready.length > 0);
 
   return (
     <div className="flex min-h-[60vh] flex-1 flex-col">
-      {dialog}
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <p className="max-w-[62ch] text-sm leading-relaxed text-pb-muted">
-          Ask Cube about the playbook or ask it to change something. To update the playbook from documents, add them with +. Each
-          change is shown first; nothing changes until you apply it. This conversation isn’t saved.
-        </p>
-        {chat.messages.length > 0 && (
-          <button type="button" onClick={startOver} className="text-xs text-pb-muted transition hover:text-pb-accent">
-            Start over
-          </button>
-        )}
-      </div>
-
       <div className="flex-1 space-y-6">
+        {chat.loading && <p className="text-sm text-pb-muted">Opening your conversation…</p>}
+        {!chat.loading && chat.messages.length === 0 && (
+          <p className="max-w-[62ch] text-sm leading-relaxed text-pb-muted">
+            Ask Cube about the playbook or ask it to change something. To update the playbook from documents, add them with +. Each
+            change is shown to you first; nothing changes until you apply it.
+          </p>
+        )}
         {chat.messages.map((m) =>
           m.role === 'user' ? (
             <div key={m.id} className="flex flex-col items-end gap-1.5">
@@ -196,7 +188,7 @@ export default function ContributorChat({ playbookId, base, updatedAt }: Props) 
       </div>
 
       <div className="sticky bottom-0 mt-6 bg-pb-bg pb-2 pt-3">
-        {chat.messages.length === 0 && !chat.busy && (
+        {!chat.loading && chat.messages.length === 0 && !chat.busy && (
           <div className="mb-3 flex flex-wrap gap-2">
             {CHIPS.map((c) => (
               <button
@@ -410,6 +402,38 @@ function Reply({
         <p className="text-sm text-pb-deliver">Applied. These changes are live.</p>
       )}
       {p && p.ops.length > 0 && m.status === 'discarded' && <p className="text-sm text-pb-muted">Discarded. Nothing was changed.</p>}
+
+      {/* A reply from an earlier visit: only a record of what was proposed is kept. */}
+      {!p && m.stored?.proposal && <StoredProposal proposal={m.stored.proposal} />}
+    </div>
+  );
+}
+
+function StoredProposal({ proposal }: { proposal: NonNullable<StoredContributorUi['proposal']> }) {
+  const n = proposal.changes.length;
+  const heading =
+    proposal.status === 'applied'
+      ? `Applied ${n} change${n === 1 ? '' : 's'}`
+      : proposal.status === 'discarded'
+        ? `Discarded ${n} proposed change${n === 1 ? '' : 's'}`
+        : `${n} proposed change${n === 1 ? '' : 's'}, not applied`;
+  return (
+    <div className="rounded-xl border border-pb-line bg-pb-surface px-4 py-3 text-sm">
+      <p className={`font-medium ${proposal.status === 'applied' ? 'text-pb-deliver' : 'text-pb-ink'}`}>{heading}</p>
+      <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-pb-muted">
+        {proposal.changes.map((c, i) => (
+          <li key={i}>{c}</li>
+        ))}
+      </ul>
+      {proposal.status === 'open' && (
+        <p className="mt-2 text-xs text-pb-muted">
+          Proposed changes aren’t kept after you leave the conversation. To make them now, ask Cube again; it will propose them
+          against the playbook as it is today.
+        </p>
+      )}
+      {proposal.status === 'applied' && (
+        <p className="mt-2 text-xs text-pb-muted">If you unticked some, only the ones you kept were applied.</p>
+      )}
     </div>
   );
 }
