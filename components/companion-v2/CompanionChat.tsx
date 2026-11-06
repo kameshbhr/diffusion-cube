@@ -128,7 +128,14 @@ export default function CompanionChat({ slug, playbookId, memberId, jobs, assets
   }
 
   const hasUserMessage = chat.messages.some((m) => m.role === 'user');
-  const showChips = !chat.loading && !hasUserMessage && !chat.busy && chat.error?.kind !== 'limit';
+  // Chips above the composer: Cube's follow-up questions from its latest
+  // reply; on a conversation the person hasn't spoken in yet, the four starter
+  // questions when Cube gave none. (Replies stored before suggestions existed
+  // have none.)
+  const last = chat.messages[chat.messages.length - 1];
+  const suggested = last?.role === 'assistant' && !last.pending ? last.ui?.suggestions ?? [] : [];
+  const chips = suggested.length ? suggested : hasUserMessage ? [] : CHIPS;
+  const showChips = !chat.loading && !chat.busy && chat.error?.kind !== 'limit' && chips.length > 0;
 
   return (
     <div className="flex min-h-[60vh] flex-1 flex-col">
@@ -239,8 +246,8 @@ export default function CompanionChat({ slug, playbookId, memberId, jobs, assets
 
       <div className="sticky bottom-0 mt-6 bg-pb-bg pb-2 pt-3">
         {showChips && (
-          <div className="mb-3 flex flex-wrap gap-2">
-            {CHIPS.map((c) => (
+          <div className="mb-3 flex flex-wrap gap-2" aria-label={suggested.length ? 'Suggested questions' : 'Ways to start'}>
+            {chips.map((c) => (
               <button
                 key={c}
                 type="button"

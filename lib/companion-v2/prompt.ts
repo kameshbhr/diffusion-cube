@@ -35,7 +35,7 @@ export async function loadAdopterInstructions(): Promise<string> {
 /** Hidden first turn, never stored or shown: lets Cube open the conversation. */
 export function kickoffMessage(hasContext: boolean): string {
   return hasContext
-    ? '[The person has started a new conversation. You already know their situation from "What we know so far". Greet them in one short sentence and ask what they would like to work on now.]'
+    ? '[The person has started a new conversation. You already know their situation from "What we know so far". Greet them in one short sentence and ask what they would like to work on now. In the block, suggest two or three questions about their likely next steps, from what we know and their job states.]'
     : '[The person has just opened the companion for the first time. Greet them in one or two short sentences, say in one line what you can help with, then ask your first question about their situation.]';
 }
 

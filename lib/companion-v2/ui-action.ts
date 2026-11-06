@@ -14,6 +14,7 @@ export const EMPTY_UI_ACTION: UiAction = {
   showAssets: [],
   context: {},
   jobUpdates: [],
+  suggestions: [],
 };
 
 /** Raw JSON of the block, or null if it is missing or not valid JSON. */
@@ -43,6 +44,7 @@ export function stripUiAction(text: string): string {
 
 const NOTE_MAX = 300;
 const CONTEXT_VALUE_MAX = 300;
+const SUGGESTION_MAX = 90;
 
 /**
  * Keeps only what is valid for this playbook: known job codes and asset ids,
@@ -53,7 +55,7 @@ export function sanitizeUiAction(
   raw: unknown,
   known: { jobCodes: Set<string>; assetIds: Set<string> }
 ): UiAction {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ...EMPTY_UI_ACTION, context: {} };
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ...EMPTY_UI_ACTION, context: {}, jobUpdates: [], suggestions: [] };
   const r = raw as Record<string, unknown>;
 
   const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
@@ -89,5 +91,19 @@ export function sanitizeUiAction(
     }
   }
 
-  return { focusJobs, openJob, showAssets, context, jobUpdates };
+  // Follow-up questions: short plain text, no duplicates, never a job code
+  // (codes are for the block only, never shown to the person).
+  const seenText = new Set<string>();
+  const suggestions = strings(r.suggestions)
+    .map((s) => s.replace(/\s+/g, ' ').trim())
+    .filter((s) => {
+      const key = s.toLowerCase();
+      if (!s || s.length > SUGGESTION_MAX || seenText.has(key)) return false;
+      if (s.split(/[^A-Za-z0-9]+/).some((w) => known.jobCodes.has(w))) return false;
+      seenText.add(key);
+      return true;
+    })
+    .slice(0, 3);
+
+  return { focusJobs, openJob, showAssets, context, jobUpdates, suggestions };
 }

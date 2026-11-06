@@ -246,8 +246,9 @@ It returns `system` as content blocks, with the stable prefix first:
 - **Journey capture:** record a state only from what the user said. "Not discussed" gets no marker. A note is one line in the user's words. No due dates, assignees or reminders.
 - **Response contract (the single source of truth):** end every reply with
   ```
-  <ui_action>{"focusJobs":["S4"],"openJob":null,"showAssets":[],"context":{"stage":"","location":"","done":"","role_note":""},"jobUpdates":[{"job":"P2","state":"done","note":"Confirmed Bhili in writing in March"}]}</ui_action>
+  <ui_action>{"focusJobs":["S4"],"openJob":null,"showAssets":[],"context":{"stage":"","location":"","done":"","role_note":""},"jobUpdates":[{"job":"P2","state":"done","note":"Confirmed Bhili in writing in March"}],"suggestions":["Who should come to the community meetings?"]}</ui_action>
   ```
+- **Suggested questions (added 2026-11-06, your request).** `suggestions` holds 2–3 short follow-up questions, shown as chips above the composer under the latest reply; tapping one sends it. They must be answerable from the playbook or source document, under 60 characters, with no job codes, and not already asked or answered. The client drops duplicates, anything over 90 characters, and any suggestion containing a job code. A new conversation the person hasn't spoken in shows the four fixed chips when Cube gives no suggestions (for a first visit, Cube asks its intake question instead). Stored with the reply in `companion_messages.ui`, so no schema change.
 
 ### Client
 - **`lib/companion-v2/ui-action.ts`.** `parseUiAction` and `stripUiAction`, a copy of `grid-update.ts`. It cuts at `<ui_action` while streaming. It validates job codes and asset ids against the loaded data and drops anything unknown.

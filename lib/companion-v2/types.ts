@@ -134,6 +134,8 @@ export interface UiAction {
   showAssets: string[];
   context: CompanionContext;
   jobUpdates: { job: string; state: JobState; note: string }[];
+  /** Up to three follow-up questions, shown as chips under the latest reply. */
+  suggestions: string[];
 }
 
 /** What the client sends to /api/chat for mode "companion-v2". */
