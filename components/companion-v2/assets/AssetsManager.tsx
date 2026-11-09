@@ -154,6 +154,13 @@ function AddAsset({
     }
   }
 
+  // Switching to a link drops a chosen file, so a file that no longer shows
+  // in the (fresh) file picker can't be uploaded by mistake.
+  const chooseKind = (next: 'file' | 'link') => {
+    setKind(next);
+    if (next === 'link') setFile(null);
+  };
+
   return (
     <div className="space-y-4 rounded-xl border border-pb-accent bg-pb-surface p-5">
       <div
@@ -165,7 +172,7 @@ function AddAsset({
           if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key) || progress !== null) return;
           e.preventDefault();
           const next = kind === 'file' ? 'link' : 'file';
-          setKind(next);
+          chooseKind(next);
           (e.currentTarget.querySelector(`[data-kind="${next}"]`) as HTMLElement | null)?.focus();
         }}
       >
@@ -177,7 +184,7 @@ function AddAsset({
             role="radio"
             aria-checked={kind === k}
             tabIndex={kind === k ? 0 : -1}
-            onClick={() => setKind(k)}
+            onClick={() => chooseKind(k)}
             disabled={progress !== null}
             className={`rounded-full px-3.5 py-1 ${kind === k ? 'bg-pb-accent text-white' : 'text-pb-muted'}`}
           >
@@ -188,8 +195,10 @@ function AddAsset({
 
       {/* Nothing can be changed while the file uploads: the row is saved from these values. */}
       <fieldset disabled={progress !== null} className="min-w-0 space-y-4">
+      {/* Different keys, so React mounts a fresh input on each switch instead of
+          turning the uncontrolled file input into the controlled link input. */}
       {kind === 'file' ? (
-        <div className="space-y-1">
+        <div key="file" className="space-y-1">
           <label className="block text-[13px] font-medium text-pb-ink" htmlFor="asset-file">
             File (any type, up to 100 MB)
           </label>
@@ -212,7 +221,7 @@ function AddAsset({
           )}
         </div>
       ) : (
-        <div className="space-y-1">
+        <div key="link" className="space-y-1">
           <label className="block text-[13px] font-medium text-pb-ink" htmlFor="asset-url">
             Link
           </label>
