@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import WorkspaceTabs from '@/components/companion-v2/WorkspaceTabs';
-import { getWorkspace } from '@/lib/companion-v2/server';
+import { canRunDigest, getWorkspace } from '@/lib/companion-v2/server';
 
 export default async function WorkspaceLayout({
   children,
@@ -12,6 +12,7 @@ export default async function WorkspaceLayout({
   const { slug } = await params;
   // Joins the caller as an adopter (PMU) on first open; 404s if not visible.
   const { playbook, member } = await getWorkspace(slug);
+  const canDigest = await canRunDigest(playbook.id);
 
   return (
     <div className="flex min-h-full flex-col">
@@ -27,7 +28,7 @@ export default async function WorkspaceLayout({
             </Link>
           </div>
           <div className="mt-1">
-            <WorkspaceTabs slug={playbook.slug} isContributor={member.member_role === 'contributor'} />
+            <WorkspaceTabs slug={playbook.slug} isContributor={member.member_role === 'contributor'} canDigest={canDigest} />
           </div>
         </div>
       </header>

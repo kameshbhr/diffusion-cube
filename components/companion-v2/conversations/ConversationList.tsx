@@ -2,17 +2,38 @@ import Link from 'next/link';
 import { contextEntries, formatWhen, type ConversationSummary } from '@/lib/companion-v2/conversations';
 
 // The contributor's list of adopter conversations (every adopter is "User").
-export default function ConversationList({ slug, conversations }: { slug: string; conversations: ConversationSummary[] }) {
+export default function ConversationList({
+  slug,
+  conversations,
+  filtered = false,
+}: {
+  slug: string;
+  conversations: ConversationSummary[];
+  filtered?: boolean;
+}) {
   return (
     <div className="space-y-4">
-      <p className="max-w-[62ch] text-sm leading-relaxed text-pb-muted">
-        Conversations people have had with Cube about this playbook, newest first. Everyone is shown as “User”: names and emails
-        are never shown. Your own conversations as a contributor aren’t listed.
-      </p>
+      <Link href={`/companion/${slug}/digest`} className="text-xs text-pb-muted transition hover:text-pb-accent">
+        ← Digest
+      </Link>
+      {filtered ? (
+        <p className="max-w-[62ch] text-sm leading-relaxed text-pb-muted">
+          The {conversations.length === 1 ? 'conversation' : `${conversations.length} conversations`} behind one item in the
+          digest, newest first. Everyone is shown as “User”.{' '}
+          <Link href={`/companion/${slug}/conversations`} className="text-pb-accent hover:underline">
+            Show all conversations
+          </Link>
+        </p>
+      ) : (
+        <p className="max-w-[62ch] text-sm leading-relaxed text-pb-muted">
+          Conversations people have had with Cube about this playbook, newest first. Everyone is shown as “User”: names and emails
+          are never shown. Your own conversations as a contributor aren’t listed.
+        </p>
+      )}
 
       {conversations.length === 0 ? (
         <p className="rounded-xl border border-dashed border-pb-line bg-pb-surface px-6 py-10 text-center text-sm text-pb-muted">
-          No conversations yet.
+          {filtered ? 'These conversations are no longer available.' : 'No conversations yet.'}
         </p>
       ) : (
         <ul className="space-y-2.5">

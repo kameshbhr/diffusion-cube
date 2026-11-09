@@ -132,6 +132,18 @@ export function toSnapshot(playbook: PlaybookRow, jobs: JobRow[]): Snapshot {
   };
 }
 
+/**
+ * Whether the caller may see and generate this playbook's Digest. Decided
+ * only by can_run_digest() in the database (migration 0037), so widening it
+ * (e.g. to admins) is a change there, not here.
+ */
+export const canRunDigest = cache(async (playbookId: string): Promise<boolean> => {
+  const { supabase } = await getViewer();
+  const { data, error } = await supabase.rpc('can_run_digest', { p_playbook_id: playbookId });
+  if (error) throw error;
+  return data === true;
+});
+
 /** For contributor-only pages: 404 for everyone else. */
 export async function requireContributor(slug: string) {
   const ws = await getWorkspace(slug);

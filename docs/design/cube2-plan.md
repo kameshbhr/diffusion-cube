@@ -582,6 +582,92 @@ After each slice I stop. You test locally, then run the `qa-tester` subagent (ma
 3. Inspect the RPC response JSON in devtools.
 4. Use the two-playbook setup from Slice 1: as contributor C, open the `test-playbook` conversations URL directly and call both RPCs with its ids.
 
+## 9. Unanswered-question log and Digest (approved 2026-11-09)
+
+The contributor's Conversations tab becomes **Digest**: an AI-written digest of what adopters asked, with numbers computed in SQL. The raw conversations stay available behind a link.
+
+### Part 1: unanswered-question log (at chat time, no extra model call)
+- **Prompt (adopter only, `content/companion-v2.md`).** When Cube tells the person the playbook doesn't cover their question, or covers it only partly, **and** the question is about doing the adoption, the `<ui_action>` block carries `gap: { kind: "not_covered" | "partly_covered", question, job, topic }`. `question` is a one-line generic summary with no names or places the person typed; `job` is a job code or null; `topic` is a 2–4 word label. `question` and `topic` are written in English. No gap for small talk or unrelated questions, and none when the only thing missing is an owner, or when Cube gave differing figures or called something an estimate (those are answers, not gaps).
+- **Client (`lib/companion-v2/ui-action.ts`).** `sanitizeUiAction` validates it like `jobUpdates`. `scrubContact` runs on both `question` and `topic`: it removes emails (incl. `mailto:`), UPI ids and other `name@handle`s, links, bare domains (incl. short links such as `bit.ly`, `wa.me`, `x.co.uk`) and phone-like numbers in any script (9–13 digits with a group of 3+, or starting with "+"; not age bands, `/` dates, ISO date ranges, or amounts after Rs/₹/INR), then collapses whitespace. `question` is capped at about 160 characters and `topic` at about 40, cutting by character so an emoji is never split. If `question` **or** `topic` is empty after this, the whole gap is dropped. `kind` must be known; `job` is kept only if it is a known job code, otherwise null. An invalid gap is dropped and never costs the turn.
+- **Storage.** The cleaned gap is stored in the assistant message's existing `companion_messages.ui`. No migration and no new table.
+- Older messages have no gap entries. Unanswered questions builds up from new chats; no backfill.
+- `ui` is client-supplied (as `jobUpdates` already are), so an adopter calling the RPC directly could write their own gap. Acceptable for the test: the digest treats gaps as data and contributors already see the adopter's own words. Because `record_companion_turn` stores `p_ui` exactly as sent, **6c runs gap text through `scrubContact` again on the server** before it reaches the digest model or the screen.
+- **For the 6b/6c SQL.** `sanitizeUiAction` always writes `"gap": null`, and `ui->'gap' is not null` is true for a JSON null, so "has a gap" is `jsonb_typeof(ui->'gap') = 'object'`. Contributor conversations are excluded everywhere by `member_role = 'adopter'` (a contributor's chats, including those with `ui->>'kind' = 'contributor'`, are stored under their contributor member row).
+
+### Part 2: Digest (contributor only)
+**Where.** The tab is labelled **Digest** and points to `/companion/[slug]/digest` (404 for non-contributors). `/conversations` and `/conversations/[id]` are unchanged, reached through **Browse all conversations** below the digest. "View conversations" links open `/conversations?ids=<id,id,…>`, the existing list filtered to exactly those conversations; ids that no longer exist are dropped silently.
+
+**Header.** "Generated on <date and time IST>", a **7 / 30 days** selector (default 7) and **Regenerate**. If no digest exists for the selected period: the numbers and a **Generate digest** button. No scheduling, no email.
+
+**Numbers (SQL, when the tab opens; never the model).** Adopters only; a contributor's own test chats are excluded. A conversation counts only once it has at least one user message (a conversation with only Cube's opening message is not counted).
+- **Users:** total, with the in-period count beside it (adopters who sent at least one message in the period).
+- **Conversations:** total, with the in-period count beside it.
+- **Most discussed jobs** (till date): per job, the number of distinct conversations in which the job was `openJob`, or in `focusJobs`, of an assistant reply that answers a real user message (kickoff replies are excluded). Limitation: `focusJobs` is what Cube's reply was about, so a job Cube raised as the next step also counts.
+- **Banner:** "Based on N users and M conversations in the last X days." If N < 3, add "Too few users to see patterns."
+
+**Sections, in this order** (a section with no supported items is hidden; never "none found"): 1. Summary (at most three bullets), 2. Themes, 3. Unanswered questions, 4. Where people got stuck, 5. Terms people asked about, 6. Complaints about Cube or the playbook, 7. What's working.
+
+**Model input (selected period only).**
+- Adopters' own messages, never Cube's replies, one per line: `M<n> | U<n> | <date> | <text, ~300 chars>`. `M<n>` maps in memory to the message id (and its conversation), `U<n>` to a run-local person number. Most recent 400 messages; the digest says so when capped.
+- Gap entries from stored replies in the period: `G<n> | U<n> | <date> | kind | job | topic | question`.
+- Current journey-state counts per job (till date, aggregated, never per person) and the job names.
+
+**Model output.** Forced tool use with a JSON schema (as `/api/pathways/check-similar` does), so the output always parses; Summary is written last.
+- `themes: [{ title, summary, jobs, evidence: [M refs] }]`
+- `unanswered: [{ question, topic, job, entries: [G refs] }]` (near-duplicates grouped; kind, users, dates and conversations come from the cited entries in code)
+- `stuck: [{ job, observation, evidence: [M refs] }]`
+- `terms: [{ term, observation, evidence: [M refs] }]`
+- `complaints: [{ about: "cube" | "playbook", summary, evidence: [M refs] }]`
+- `working: [{ about: "cube" | "playbook", summary, evidence: [M refs] }]`
+- `summary: [{ text, refs: ["themes[1]", "unanswered[0]", …] }]`
+
+**Code checks (never trust the model).**
+- Drop any item whose evidence or entries don't resolve. A `stuck` item with no message evidence is kept only if state counts exist for that job, and shows the true counts from the database, never numbers the model wrote. Such an item has no "View conversations" link (it rests on people's states, not on conversations).
+- Each item's user count is the number of distinct `U` labels behind its evidence; any count the model writes is ignored. Each item stores its conversation ids and, per conversation, its run-local person label (U1, U2, never a user id). Unanswered questions also show the date(s) asked.
+- Summary: drop bullets whose refs don't exist; each bullet's user count is the union of its cited items' people.
+- **Deletes are honoured.** When the tab opens, conversations that no longer exist (deleted by the adopter, or by account deletion) are removed from every item, user counts are recomputed from what remains, and an item or bullet with nothing left is hidden.
+
+**Digest prompt (`content/companion-v2-digest.md`).** Base every item on cited evidence or drop it; say "too few users to tell" rather than a trend when evidence is thin; never invent. No quotes longer than a few words; no names, places, ids or emails; no judging individual users. No suggested edits, recommendations or priorities, and no "Fix with Cube" button anywhere: an unanswered question doesn't prove the playbook lacks the answer. Themes, Unanswered, Terms, Complaints and What's working describe the period; Where people got stuck uses the current state counts (till date) with the period's messages as context. Terms: only where a message explicitly asks what something means or uses it differently from the playbook; never claim someone misunderstood. Complaints: only explicit statements that an answer was unhelpful, repetitive, too long, too complicated, irrelevant or wrong, or that the playbook is unclear; never inferred from tone; frustration about the real-world project (vendors, officials, delays) belongs in Where people got stuck. What's working: only explicit positive statements. Summary: written last, refs only to items already produced.
+
+**Generation.** `app/api/companion-v2/digest/route.ts` (separate from `/api/chat`: it doesn't stream and it stores a result). One non-streaming call to `claude-sonnet-4-6`, `max_tokens` about 6000, `maxDuration = 300`. It counts against the contributor's daily cap (`bump_companion_usage('contributor')`, before the model call). **A `max_tokens` stop is a failed run**, as is any API error or invalid output: the previous digest stays and the contributor sees a retry message. The route reads data and calls the functions below **with the caller's own session; the service role is not used in this route at all**. Only the Anthropic call uses the server's key.
+
+### Migration `0037_cube2_digest.sql`
+- **`can_run_digest(p_playbook_id)`**: for now returns `is_playbook_contributor(p_playbook_id)` and nothing else (`is_playbook_contributor` itself is unchanged). Every permission check in the digest code uses it and never calls `is_playbook_contributor` directly: every function below, the table's read policy, the route's access check, the `/digest` page (404 otherwise) and whether the Digest tab shows (`canRunDigest()` in `lib/companion-v2/server.ts`). Allowing admins later is a one-line change in one migration. Not digest code, so not covered: the conversation pages behind "View conversations" / "Browse all conversations" still use `requireContributor` and the 0036 functions, which call `is_playbook_contributor`; those would need the same change if admins are added. (Also, opening a playbook joins a non-member as an adopter, via `getWorkspace`.)
+- **`playbook_digests`**: `playbook_id → cascade`, `period_days check in (7, 30)`, `payload jsonb` (an object), `generated_at`, primary key `(playbook_id, period_days)`. One stored digest per playbook per period, overwritten on regenerate; no history. The payload holds conversation ids and run-local person labels (U1, U2), never a user id, member id, email or name. RLS: select where `can_run_digest(playbook_id)`; **no insert, update or delete grants**: writes only through `save_digest`.
+- **`playbook_digest_runs`** (as built: the lease has its own table, one row per playbook, so it works before any digest exists and covers both periods): `playbook_id` primary key, `run_id uuid`, `running_until`. No direct access for any signed-in user.
+- **`security definer` functions**, each checking `can_run_digest` for the caller and covering adopters only (contributor members' chats are never read). People are a run-local number, never a `member_id` or user id:
+  - `contributor_digest_stats(p_playbook_id, p_days)`: the numbers, the 10 most discussed jobs, and `conversation_ids` (the counted conversations that still exist, used to drop deleted ones from a stored digest). Null for a caller who can't run the digest or a period other than 7/30.
+  - `contributor_digest_input(p_playbook_id, p_days)`: the period's user messages (newest 400, each cut to 1000 characters; the route cuts again to about 300) and gap entries, with message id, conversation id, date and person number, plus `messages_total`. People are numbered in random order on every call, so a number can't follow a person across calls; Cube's reply text is never read, only each reply's `gap`.
+  - `contributor_job_state_counts(p_playbook_id)`: per job and state, people across adopters (till date).
+  - `claim_digest_run(p_playbook_id) → run_id | null`: one run at a time per playbook. Takes the lease (`now() + 5 minutes`, new `run_id`) only when none exists or it has expired; null when another run holds it. A run that dies (tab closed, function timeout) simply lets the lease expire.
+  - `save_digest(p_playbook_id, p_period_days, p_run_id, p_payload) → boolean`: only the run whose `run_id` still holds the lease row may save (a run whose lease expired and was taken over gets false and stores nothing); it releases the lease and upserts the payload and `generated_at` in one transaction. Rejects a non-object or over-1 MB payload.
+  - `release_digest_run(p_playbook_id, p_run_id)`: clears the lease after a failed run so Retry works at once; only that run's lease, and it never touches the stored digest.
+
+**Dev-only switches (ignored in production builds):** `COMPANION_DIGEST_MAX_TOKENS` lowers `max_tokens` to test the max_tokens path; `COMPANION_DIGEST_FAIL=1` throws before the model call to test the API-failure path.
+
+**Choices made while building.** An item is dropped if **any** reference it cites doesn't resolve (a wrong reference suggests the item isn't grounded). A summary bullet is hidden on the tab once **any** item it cites is hidden after deletions (its text may describe what was deleted). Every string the model writes is run through `scrubContact` again before storing, and stray references (`U3`, `M12`, `G2`) and job codes are removed from it. Section limits (8 items; 12 unanswered; 3 summary bullets) are enforced in code, not only in the schema. `unanswered` cites `G…` only; every other section `M…` only. A period with no messages and no gap entries stores an empty digest without calling the model (no cap used).
+
+**Person labels in the stored payload (decided 2026-11-09).** The payload keeps one run-local label per person across all items (U1 in a theme is the same person as U1 in a complaint), so counts after deletions stay exact. The labels never reach the page; a contributor reading `playbook_digests` directly can see which conversations share a person within one digest, but labels differ between digests.
+
+**After deletions and other edge cases (UI).** A stored digest that is malformed (e.g. written from the browser console through `save_digest`) skips the bad items instead of breaking the page. A summary bullet resting only on journey-state counts shows no user count. "View conversations" carries at most 100 conversation ids. Failed runs and attempts over the cap still count towards the daily cap. Once a digest exists, the banner counts what that digest was built on (after deletions), so it can differ from the period numbers in the cards.
+
+### Slices
+**6a: gap logging.** `types.ts`, `ui-action.ts`, `content/companion-v2.md`.
+- *Accept when:* a not-covered question about the adoption stores a `gap` in that reply's `ui`; a partly covered one stores `partly_covered`; small talk or an off-topic question stores none; a gap with an email, URL or phone number in its question is stored without it; a malformed gap is dropped and the turn is still saved; the reply text never shows the block.
+- *Test:* five scripted questions (two not covered, one partly covered, one small talk, one covered), then query `companion_messages.ui`. The sanitizer's edge cases (email/URL/phone stripping, length caps, unknown job, bad kind) are checked with the Node script in the appendix of `docs/design/cube2-slice6a-tests.md` (run against a copy of `ui-action.ts` and `types.ts` with the import rewritten to `./types.ts`, since Node's type stripping needs the extension).
+
+**6b: migration and Digest tab with numbers.** `0037`, `/digest` page, tab relabel, numbers, banner, Browse all conversations, `/conversations?ids=` filter.
+- *Accept when:* numbers match hand-counted SQL; a contributor's own chats and opening-only conversations aren't counted; adopters get 404 on `/digest`; a contributor to playbook A gets nothing (or an error) from every 0037 function for playbook B; `playbook_digests` can't be inserted, updated or deleted directly by any signed-in user.
+
+**6c: generation.** `content/companion-v2-digest.md`, the route, validation, the sections, View conversations links.
+- *Accept when:* every shown item resolves to real messages or gap entries; user counts match the cited people; deleting a cited conversation reduces or hides the item on reload; the payload contains no user ids or emails (inspect the row); the call counts against the daily cap; a second Generate while one is running is refused.
+- *Test:*
+  1. Generate with 3+ adopters' chats; check items, counts and links.
+  2. **max_tokens stop:** run with `max_tokens` forced low (a dev-only env override); the previous digest is unchanged in the table and the retry message shows; the lease is released.
+  3. **Closing the tab mid-generation:** start Generate and close the tab. The stored digest is either the old one or a complete new one, never partial. If the run was cut off, a Generate within 5 minutes is refused as "already running", and one after 5 minutes succeeds without any manual clean-up.
+  4. API failure (dev-only failure injection): previous digest kept, retry message shown.
+  5. As an adopter, and as a contributor of another playbook: the route returns 403 and the functions return nothing.
+
 ---
 
 ## Assumptions

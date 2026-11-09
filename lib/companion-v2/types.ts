@@ -127,6 +127,23 @@ export const CONTEXT_KEYS = ['stage', 'location', 'done', 'role_note'] as const;
 export type ContextKey = (typeof CONTEXT_KEYS)[number];
 export type CompanionContext = Partial<Record<ContextKey, string>>;
 
+export type GapKind = 'not_covered' | 'partly_covered';
+export const GAP_KINDS: readonly GapKind[] = ['not_covered', 'partly_covered'];
+
+/**
+ * An adoption question the playbook doesn't cover, or covers only partly
+ * (the unanswered-question log read by the contributor Digest).
+ */
+export interface UiGap {
+  kind: GapKind;
+  /** A generic one-line summary: no names, places, emails, links or phone numbers. */
+  question: string;
+  /** A job code of this playbook, or null. */
+  job: string | null;
+  /** A 2-4 word label. */
+  topic: string;
+}
+
 /** The validated <ui_action> block of one assistant reply. */
 export interface UiAction {
   focusJobs: string[];
@@ -136,6 +153,8 @@ export interface UiAction {
   jobUpdates: { job: string; state: JobState; note: string }[];
   /** Up to three follow-up questions, shown as chips under the latest reply. */
   suggestions: string[];
+  /** Set only when the reply says the playbook doesn't (fully) cover an adoption question. Absent on older messages. */
+  gap?: UiGap | null;
 }
 
 /** What the client sends to /api/chat for mode "companion-v2". */

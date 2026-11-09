@@ -7,10 +7,12 @@ import { confirmLeave } from '@/lib/companion-v2/leave-warning';
 interface Props {
   slug: string;
   isContributor: boolean;
+  /** From can_run_digest() in the database, not from the member role. */
+  canDigest: boolean;
 }
 
 // Adopters see two screens (Home, Jobs). Contributors also see their tools.
-export default function WorkspaceTabs({ slug, isContributor }: Props) {
+export default function WorkspaceTabs({ slug, isContributor, canDigest }: Props) {
   const pathname = usePathname();
   const base = `/companion/${slug}`;
 
@@ -21,15 +23,18 @@ export default function WorkspaceTabs({ slug, isContributor }: Props) {
       ? [
           { href: `${base}/playbook`, label: 'Playbook' },
           { href: `${base}/assets`, label: 'Assets' },
-          { href: `${base}/conversations`, label: 'Conversations' },
         ]
       : [{ href: `${base}/jobs`, label: 'View Jobs' }]),
-  ];
+    // The raw conversations sit behind the Digest ("Browse all conversations").
+    ...(canDigest ? [{ href: `${base}/digest`, label: 'Digest', also: [`${base}/conversations`] }] : []),
+  ] as { href: string; label: string; exact?: boolean; also?: string[] }[];
 
   return (
     <nav aria-label="Workspace" className="-mb-px flex gap-1 overflow-x-auto">
       {tabs.map((t) => {
-        const active = t.exact ? pathname === t.href : pathname?.startsWith(t.href);
+        const active = t.exact
+          ? pathname === t.href
+          : [t.href, ...(t.also ?? [])].some((h) => pathname?.startsWith(h));
         return (
           <Link
             key={t.href}
