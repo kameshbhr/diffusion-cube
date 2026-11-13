@@ -1,4 +1,6 @@
-“On branch cube-2, the Cube 2.0 section at the bottom takes precedence over anything above it.# 100 Pathways — Diffusion Cube (Adoption Companion)
+# 100 Pathways — Diffusion Cube (Adoption Companion)
+
+> On branch `cube-2`, the Cube 2.0 section at the bottom takes precedence over anything above it.
 
 ## What this is
 
@@ -13,7 +15,7 @@ A Next.js web app, the conversational companion to **100pathways.com**. It helps
 
 Supporting pages: `/login` (email+password, 6-digit OTP signup/reset), `/account` (contact sharing, self-serve account deletion), `/terms`, `/privacy`, `(app)/wiki` (on-demand corpus browsing), `(app)/adoptions`. `/navigate` is a legacy redirect to `/analyse`; `/` redirects to `/explore`.
 
-## Current functionality (verified against code on `cube-dev`)
+## Current functionality (verified against code on `cube-2`)
 
 ### The framework / grid
 - Dimensions: `persona`, `solution`, `institution`, `ecosystem` (each with weighted sub-categories). Stages: `Explore → Define → Pilot → Scale`. Shape lives in `lib/dimensions.ts`; behavior (what the model asks about) lives in **`content/framework.md`** — edit that file, not code, to change framework behavior.
@@ -49,7 +51,7 @@ flowchart LR
   U[Browser] -->|pages| P[proxy.ts<br/>session gate + public allow-list]
   P --> PG[App Router pages<br/>/explore /analyse /contribute /admin]
   PG --> H[lib/adoption-conversation.ts<br/>client hook: stream, parse grid_update, persist]
-  H -->|POST mode=...| C[/api/chat<br/>8 modes, one route/]
+  H -->|POST mode=...| C[/api/chat<br/>9 modes, one route/]
   C --> SP[lib/system-prompts.ts<br/>prompt builders]
   SP --> K[(content/: framework.md,<br/>wiki/pathways/*.md, resources.md)]
   SP --> DB
@@ -62,11 +64,11 @@ flowchart LR
 ```
 
 ### Key design decisions
-1. **One chat route, many modes.** `app/api/chat/route.ts` dispatches on `mode`: `companion`, `library`, `extract-insights`, `analysis-doc`, `executive-summary`, `plan-document`, `pathway-draft`, `pathway-exec-summary`. All stream from `claude-sonnet-4-6`. Auth/role checks live here (real enforcement); `library` is the only anonymous mode; `companion` re-checks `adopter` vs `pathway_contributor` against `meta.flow`.
+1. **One chat route, many modes.** `app/api/chat/route.ts` dispatches on `mode`: `companion`, `library`, `extract-insights`, `analysis-doc`, `executive-summary`, `plan-document`, `pathway-draft`, `pathway-exec-summary`, plus Cube 2.0's `companion-v2` (see the Cube 2.0 section). All stream from `claude-sonnet-4-6`. Auth/role checks live here (real enforcement); `library` is the only anonymous mode; `companion` re-checks `adopter` vs `pathway_contributor` against `meta.flow`.
 2. **The model never writes to the DB.** Each `companion` reply ends with a `<grid_update>` JSON block (`cells`, `meta`, `pathwaysReferenced`, `flowStep`, plus `explorerAction` *or* `pathwayAction`). The client hook (`lib/adoption-conversation.ts`, parsed by `lib/grid-update.ts`) strips it, merges the grid, persists, and fires any follow-up document-generation call. `designs.meta` is re-injected every turn because the block is stripped before storage.
 3. **Whole-corpus prompt injection.** Every companion turn gets the framework + all grounding pathways (`lib/wiki-loader.ts`: static `content/wiki/pathways/` merged with `published_pathways`). No retrieval layer — fine at current corpus size, the planned evolution is RAG.
 4. **Three-deep access control.** `proxy.ts` only checks "is there a session" (with a public allow-list incl. `/explore`, `/analyse`, `/contribute`, `/api/chat`); pages render tiered access-gate messages; API routes re-check roles via `lib/roles.ts` (`general_user | adopter | pathway_contributor | admin`).
-5. **No ORM, no repository layer.** Direct `@supabase/supabase-js` calls; clients in `lib/supabase/{client,server,admin}.ts`. Schema = sequential SQL in `supabase/migrations/` (currently `0001`–`0033`).
+5. **No ORM, no repository layer.** Direct `@supabase/supabase-js` calls; clients in `lib/supabase/{client,server,admin}.ts`. Schema = sequential SQL in `supabase/migrations/` (currently `0001`–`0037`; `0034`–`0037` are Cube 2.0).
 6. **Client-side document extraction** (`lib/extract-text.ts`: pdfjs, mammoth, SheetJS, jszip for PPTX) — uploads become text before they reach the API.
 
 ### Product rules the prompts enforce
@@ -176,7 +178,7 @@ If the source document and the playbook disagree, the playbook wins for sequenci
 - Simple, calm, light theme. Use the `frontend-design` skill.
 
 ### How to work on this
-- Plan first, then build in slices (flag and schema; companion-v2 chat; adopter Home and Jobs; contributor tools; conversation viewer). Stop after each slice for the user to test, and commit only when the user says "commit".
+- Plan first, then build in slices (flag and schema; companion-v2 chat; adopter Home and Jobs; contributor tools; conversation viewer; unanswered-question log and Digest). Stop after each slice for the user to test, and commit only when the user says "commit".
 - Test migrations on a non-production Supabase project. Deploy previews from the branch; production deploys only from `main`.
 - No automated tests. After each slice, run the `qa-tester` subagent for manual scripts, then `code-reviewer` on the diff.
 - When the companion misbehaves, check `content/companion-v2.md` and the response contract for contradictions before adding more rules.
