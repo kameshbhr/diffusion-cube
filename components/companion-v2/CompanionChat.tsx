@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import WikiMarkdown from '@/components/WikiMarkdown';
+import VoiceInputButton from '@/components/VoiceInputButton';
 import { NEW_CONVERSATION, useCompanionChat } from '@/lib/companion-v2/use-companion-chat';
 import StateMarker from './StateMarker';
 import AssetLink from './AssetLink';
@@ -283,6 +284,13 @@ export default function CompanionChat({ slug, playbookId, memberId, jobs, assets
             aria-label="Message Cube"
             disabled={chat.loading || chat.error?.kind === 'limit'}
             className="max-h-[200px] min-h-[40px] flex-1 resize-none bg-transparent px-2 py-2 text-[15px] text-pb-ink outline-none placeholder:text-pb-muted"
+          />
+          <VoiceInputButton
+            value={draft}
+            onChange={setDraft}
+            disabled={chat.loading || chat.error?.kind === 'limit'}
+            theme="cube2"
+            className="mb-0.5 h-9 w-9"
           />
           <button
             type="submit"

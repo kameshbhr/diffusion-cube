@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import WikiMarkdown from '@/components/WikiMarkdown';
+import VoiceInputButton from '@/components/VoiceInputButton';
 import PatchReview from './PatchReview';
 import { showToast } from '@/lib/toast';
 import { useLeaveWarning } from '@/lib/companion-v2/leave-warning';
@@ -279,6 +280,7 @@ export default function ContributorChat({ playbookId, memberId, conversationPara
             aria-label="Message Cube"
             className="max-h-[220px] min-h-[40px] flex-1 resize-none bg-transparent px-2 py-2 text-[15px] text-pb-ink outline-none placeholder:text-pb-muted"
           />
+          <VoiceInputButton value={draft} onChange={setDraft} disabled={chat.loading} theme="cube2" className="mb-0.5 h-9 w-9" />
           <button
             type="submit"
             disabled={!canSend}
