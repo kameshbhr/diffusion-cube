@@ -80,7 +80,9 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL('/explore', request.url));
     }
     const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('next', pathname);
+    // Keep the query string: /oauth/consent needs its ?authorization_id= back
+    // after sign-in (Cube connector, cube-connector/README.md).
+    loginUrl.searchParams.set('next', pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
   }
 
