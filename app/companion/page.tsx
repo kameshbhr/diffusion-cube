@@ -10,12 +10,7 @@ export default async function CompanionHome() {
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-8 sm:py-14">
-      <p className="font-mono text-xs uppercase tracking-[0.2em] text-pb-accent">Companion</p>
-      <h1 className="mt-3 font-serif text-3xl font-bold leading-tight text-pb-ink">Your playbooks</h1>
-      <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-pb-muted">
-        Each playbook brings together what others learned doing the same work. Open one and Cube will help you
-        work out where you are and what to do next.
-      </p>
+      <h1 className="font-mono text-xs uppercase tracking-[0.2em] text-pb-accent">Companion</h1>
 
       {playbooks.length === 0 ? (
         <p className="mt-10 rounded-xl border border-dashed border-pb-line bg-pb-surface px-5 py-6 text-sm text-pb-muted">
