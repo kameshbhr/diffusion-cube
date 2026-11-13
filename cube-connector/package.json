@@ -1,0 +1,29 @@
+{
+  "name": "cube-connector",
+  "type": "module",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Cube connector: remote MCP server for saving and searching team know-how, with Supabase OAuth 2.1 sign-in. Based on mcp-use/mcp-oauth-supabase-template (MIT).",
+  "license": "MIT",
+  "scripts": {
+    "build": "mcp-use build",
+    "dev": "mcp-use dev",
+    "start": "mcp-use start",
+    "typecheck": "tsc --noEmit",
+    "restructure": "tsx --env-file=.env src/restructure.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
+    "@supabase/supabase-js": "^2.119.0",
+    "mcp-use": "2.12.4",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
+}
