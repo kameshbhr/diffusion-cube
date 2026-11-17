@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { hasRole, isAdmin } from '@/lib/roles'
-import { isReservedPathwaySlug } from '@/lib/wiki-loader'
 
 import { withErrorHandling } from '@/lib/errors'
 // Always a valid slug (isValidSlug) — assemble refuses anything else, so a
@@ -21,22 +20,20 @@ function slugify(title: string): string {
   return slug || 'pathway'
 }
 
-// Taken means another pathway has it, or it's reserved by the curated corpus
-// (isReservedPathwaySlug) — assemble commits to content/wiki/pathways/<slug>.md,
-// so a "Blue Dots" or "Index" pathway would otherwise overwrite that file.
+// Taken means another pathway row already has it, whatever its status
+// (pathways.slug is unique). There are no shipped pathway files to collide
+// with any more (docs/features/pathway-storage/).
 async function uniqueSlug(base: string): Promise<string> {
   const admin = createAdminClient()
   let candidate = base
   let suffix = 0
   while (true) {
-    if (!(await isReservedPathwaySlug(candidate))) {
-      const { data } = await admin
-        .from('pathways')
-        .select('id')
-        .eq('slug', candidate)
-        .maybeSingle()
-      if (!data) return candidate
-    }
+    const { data } = await admin
+      .from('pathways')
+      .select('id')
+      .eq('slug', candidate)
+      .maybeSingle()
+    if (!data) return candidate
     suffix++
     candidate = `${base}-${suffix}`
   }
@@ -49,7 +46,7 @@ async function uniqueSlug(base: string): Promise<string> {
  * (migration 0040) lets a user read just the pathways they contribute to, so
  * the full list is read here with the service role.
  */
-async function handleGET(req: NextRequest) {
+async function handleGET(_req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

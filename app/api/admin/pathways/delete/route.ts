@@ -2,19 +2,21 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isAdmin } from '@/lib/roles';
 import { removeAssetObjects } from '@/lib/toolkit-assets-server';
+import { removeSourceObjects } from '@/lib/pathway-store';
 
 import { withErrorHandling } from '@/lib/errors';
-// Deletes a pathway entirely — pathway_contributors and contribution_units
-// both cascade on pathway_id (see migrations 0021, 0022); designs.pathway_id
-// is set null rather than cascaded (migration 0024), so a contributor's own
-// workspace survives, just unlinked. Does not remove anything already
-// committed to GitHub (content/wiki/pathways/<slug>.md) — this only clears
-// the pathway from the app's own pick list and DB-side data.
+// Deletes a pathway entirely — and with it, unpublishes it. pathway_versions,
+// pathway_units (its search index), pathway_sources / pathway_source_chunks,
+// pathway_contributors and contribution_units all cascade on pathway_id;
+// published_pathways is a view over pathways (migration 0042), so the
+// pathway leaves the Explore library and every answer in the same statement.
+// designs.pathway_id is set null rather than cascaded (migration 0024), so a
+// contributor's own workspace survives, just unlinked.
 //
-// Toolkit asset files (any status) are removed from storage first — their
-// contribution_units rows cascade away with the pathway, and a file nobody
-// can reach through a row anymore must not linger in the bucket. A storage
-// failure is logged, never blocks the delete.
+// Files in storage — toolkit assets (any status) and a seeded pathway's
+// original documents — are removed first: their rows cascade away with the
+// pathway, and a file nobody can reach through a row must not linger in a
+// bucket. A storage failure is logged, never blocks the delete.
 async function handlePOST(req: Request) {
   const supabase = await createClient();
   const {
@@ -32,6 +34,7 @@ async function handlePOST(req: Request) {
   }
 
   const admin = createAdminClient();
+
   const { data: assetFiles } = await admin
     .from('contribution_units')
     .select('storage_path')
@@ -39,6 +42,7 @@ async function handlePOST(req: Request) {
     .eq('unit_type', 'toolkit-asset')
     .not('storage_path', 'is', null);
   await removeAssetObjects((assetFiles ?? []).map((a) => a.storage_path as string));
+  await removeSourceObjects(pathway_id, admin);
 
   const { error } = await admin.from('pathways').delete().eq('id', pathway_id);
   if (error) return Response.json({ error: error.message }, { status: 500 });
