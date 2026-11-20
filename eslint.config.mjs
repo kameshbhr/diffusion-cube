@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Separate service with its own tooling.
     "cube-connector/**",
+    // Deno code (Supabase Edge Functions).
+    "supabase/functions/**",
   ]),
 ]);
 

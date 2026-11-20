@@ -1,3 +1,4 @@
+// Copied from main @ 7b8b5ff
 // Client-side text extraction — runs entirely in the browser so uploaded
 // documents never need to hit a server route or hit Vercel's request-size limits.
 import * as pdfjsLib from 'pdfjs-dist';
@@ -14,6 +15,13 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 // format) aren't supported; only the modern XML-based .docx/.pptx are.
 const TEXT_EXTENSIONS = ['pdf', 'txt', 'md', 'docx', 'xlsx', 'xls', 'pptx'];
 const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+
+// The file pickers' accept lists. The contributor flow also takes the
+// toolkit-asset-only types (.doc, .ppt, .csv): those can't be read as text
+// here, but can still be kept as an asset file (see lib/toolkit-assets.ts
+// and handleAttachFiles in lib/adoption-conversation.ts). Still no ZIP.
+export const ATTACH_ACCEPT = '.pdf,.docx,.xlsx,.xls,.pptx,.txt,.md,.png,.jpg,.jpeg,.gif,.webp';
+export const CONTRIBUTOR_ATTACH_ACCEPT = `${ATTACH_ACCEPT},.doc,.ppt,.csv`;
 
 const MAX_DOCUMENT_BYTES = 100 * 1024 * 1024;
 // Anthropic's per-image base64 payload limit.

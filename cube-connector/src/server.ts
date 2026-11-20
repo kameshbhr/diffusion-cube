@@ -25,10 +25,10 @@ const server = new MCPServer({
   version: "0.2.0",
   description: "Save and search the team's shared know-how in the Cube.",
   instructions:
-    "The Cube holds notes people wrote about their own work adopting AI: decisions and why, what worked or didn't, workarounds, setbacks and open problems. " +
-    "Each note belongs to a use case and links to one or more journeys (one team's lived experience, e.g. \"Bihar DC, 2026\"); cube_my_journeys lists the person's. " +
-    "Save a note only after the person agrees, as raw text in their own words: the Cube structures it. Answer only from what the notes say, name who wrote them, when and which journey, and log questions the notes can't answer with cube_log_question. " +
-    "Nothing here edits or deletes notes, and nothing here changes the playbook.",
+    "The Cube holds notes people wrote about their own work adopting AI (decisions and why, what worked or didn't, workarounds, setbacks and open problems), and documents an admin uploaded, such as reports. " +
+    "Each note and document belongs to a use case and may link to journeys (one team's lived experience, e.g. \"Bihar DC, 2026\"); cube_my_journeys lists the ones the person can read, and which they can add notes to. " +
+    "Save a note only after the person agrees, as raw text in their own words: the Cube structures it. Answer only from what the notes and documents say; name who wrote a note, when and which journey, or the document's title; and log questions they can't answer with cube_log_question. " +
+    "Nothing here edits or deletes notes or documents, and nothing here changes the playbook.",
   oauth: oauthSupabaseProvider({
     // `mcp-use build` loads this module without secrets; a placeholder lets
     // it build. At run time a missing URL fails loudly, as it should.

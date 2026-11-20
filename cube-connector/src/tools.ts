@@ -1,11 +1,12 @@
 /**
- * The seven Cube tools from connector-contract.md (version 2). Names, inputs
- * and outputs match the contract exactly, because the cube-capture, cube-ask
- * and cube-curator skills call them by these names.
+ * The Cube tools from connector-contract.md (version 2), plus cube_read_source
+ * (raw layer, migration 0039). Names match the contract, because the
+ * cube-capture, cube-ask and cube-curator skills call them by these names.
  *
  * Every tool takes the caller's identity from the verified sign-in token and
- * is scoped to the caller's use cases. No tool edits or deletes notes, and
- * nothing here touches the playbook.
+ * is scoped to the use cases the caller can read (allowlisted, or open to
+ * all); saving a note needs write access (scope.ts). No tool edits or deletes
+ * notes or documents, and nothing here touches the playbook.
  */
 
 import type { CallToolResult, MCPServer } from "mcp-use";
@@ -14,15 +15,17 @@ import { z } from "zod";
 
 import { DATE_INPUT_HELP, parseDateInput } from "./dates.js";
 import { db } from "./db.js";
+import { embedTexts, QUICK_EMBED, toPgVector } from "./embeddings.js";
 import { ensurePerson, identityForUser, type CubeIdentity } from "./identity.js";
-import { shapeNotes, type NoteRow } from "./notes.js";
+import { loadNotes, shapeNotes, type NoteRow } from "./notes.js";
 import { saveNote, type CandidateJourney } from "./save-note.js";
 import {
   checkJourneyFilter,
   checkUseCaseFilter,
   loadScope,
-  NOT_A_MEMBER_MESSAGE,
+  NO_ACCESS_MESSAGE,
   pickUseCase,
+  pickWritableUseCase,
   type CallerScope,
 } from "./scope.js";
 
@@ -106,9 +109,11 @@ export function registerCubeTools(server: CubeServer): void {
       name: "cube_my_journeys",
       title: "My use cases and journeys",
       description:
-        "List the signed-in person's use cases, and the journeys in each (a journey is one team's lived experience of the use case, e.g. \"Bihar DC, 2026\"). " +
-        "Every journey in the use case is listed: the person can write about any of them, or a general note, and can filter searches by any of them. " +
-        "Each use case also lists its playbooks; a playbook's curators are its contributors, so is_curator on a playbook says whether the person curates it, and is_curator on the use case is true if they curate any of its playbooks. " +
+        "List the use cases the signed-in person can read, and the journeys in each (a journey is one team's lived experience of the use case, e.g. \"Bihar DC, 2026\"). " +
+        "Each use case has access: 'write' means the person can add notes to it, 'read' means they can only search and read it. " +
+        "Each use case describes itself (objective, problem, users, sector), and each journey says who the adopter is (organisation), where (geography), and the scale and impact achieved. Use these as background, and say a field is empty rather than guessing. " +
+        "Every journey in the use case is listed: with write access the person can write about any of them, or a general note, and anyone can filter searches by any of them. " +
+        "Each use case also lists its playbooks; is_curator says whether the person curates a playbook. It is information only and gives no access. " +
         "Call this once per conversation before saving a note or filtering by journey.",
       inputSchema: z.object({}),
       annotations: { readOnlyHint: true, openWorldHint: false },
@@ -116,7 +121,7 @@ export function registerCubeTools(server: CubeServer): void {
     async (_input, ctx) =>
       withCaller(ctx, async (_me, scope) => {
         const result: Record<string, unknown> = { use_cases: scope.useCases };
-        if (scope.useCases.length === 0) result.message = NOT_A_MEMBER_MESSAGE;
+        if (scope.useCases.length === 0) result.message = NO_ACCESS_MESSAGE;
         return ok(result);
       }),
   );
@@ -132,7 +137,7 @@ export function registerCubeTools(server: CubeServer): void {
         "The Cube works out the type, title, fields and topics itself, so don't send those. The author is recorded from sign-in: never pass a name. " +
         "Which journey: if the conversation makes it clear which journey or journeys the note is about, pass journey_ids (a note may cover several journeys of one use case, e.g. \"UP had the same problem\"). " +
         "Otherwise leave journey_ids out: if the use case has one journey the note goes to it; if it has several, the Cube links the one the note clearly names, or else keeps the note general. " +
-        "Pass use_case_id when leaving journey_ids out and the person belongs to more than one use case. " +
+        "Needs write access to the use case (access 'write' in cube_my_journeys). Pass use_case_id when leaving journey_ids out and the person can write to more than one use case; if it isn't clear which, ask them. " +
         "Returns the saved note with its id and title. If structuring_pending is true, the note is saved and will be tidied up later.",
       inputSchema: z.object({
         raw_text: z.string().trim().min(1).max(8000).describe("The note in the person's own words, self-contained."),
@@ -141,7 +146,7 @@ export function registerCubeTools(server: CubeServer): void {
           .max(20)
           .optional()
           .describe("Journeys this note is about, all in the same use case. Leave out if it isn't clear: the Cube infers one or keeps the note general."),
-        use_case_id: uuid("The use case, from cube_my_journeys. Needed without journey_ids when the person belongs to more than one use case.").optional(),
+        use_case_id: uuid("The use case, from cube_my_journeys. Needed without journey_ids when the person can write to more than one use case.").optional(),
         source: z
           .enum(["conversation", "nudge", "document"])
           .optional()
@@ -158,7 +163,7 @@ export function registerCubeTools(server: CubeServer): void {
     },
     async (input, ctx) =>
       withCaller(ctx, async (me, scope) => {
-        if (scope.useCases.length === 0) throw new PlainError(NOT_A_MEMBER_MESSAGE);
+        if (!scope.useCases.some((u) => u.access === "write")) throw new PlainError(NO_ACCESS_MESSAGE);
         const journeyIds = [...new Set(input.journey_ids ?? [])];
         let useCaseId: string;
         let inferFrom: CandidateJourney[] = [];
@@ -176,13 +181,14 @@ export function registerCubeTools(server: CubeServer): void {
             throw new PlainError("All journeys on one note must be in the same use case. Save a separate note for each use case.");
           }
           useCaseId = [...useCasesOfJourneys][0];
+          if (scope.useCases.find((u) => u.id === useCaseId)?.access !== "write") throw new PlainError(NO_ACCESS_MESSAGE);
           if (input.use_case_id && input.use_case_id !== useCaseId) {
             throw new PlainError("use_case_id doesn't match the journeys given. Leave use_case_id out: it comes from the journeys.");
           }
         } else {
           // No journey named: the use case's only journey, or one inferred
           // from the text (below), or a general note.
-          const useCase = plain(() => pickUseCase(scope, input.use_case_id));
+          const useCase = plain(() => pickWritableUseCase(scope, input.use_case_id));
           useCaseId = useCase.id;
           if (useCase.journeys.length === 1) journeyIds.push(useCase.journeys[0].id);
           else inferFrom = useCase.journeys.map((j) => ({ id: j.id, name: j.name, organisation: j.organisation }));
@@ -216,47 +222,85 @@ export function registerCubeTools(server: CubeServer): void {
   server.tool(
     {
       name: "cube_search_notes",
-      title: "Search the Cube's notes",
+      title: "Search the Cube",
       description:
-        "Find notes in the person's use cases, across every journey, that match a question or topic. Matches notes that share any meaningful word with the query, best matches first. " +
-        "It matches words, not meaning, so search more than once: with the question's own key words, then with synonyms or related terms (vendor/supplier, field test/pilot, sign-off/approval). " +
-        "Optional filters: use_case_id, journey_id (ids from cube_my_journeys), note_type, outcome (e.g. 'did_not_work' for what went wrong), status, since, until, author_email. " +
-        "Each note lists the journeys it came from. Check status: 'superseded' means a later note replaced it, 'disputed' means the curator hasn't settled it, 'unstructured' means it hasn't been tidied yet, so read raw_text.",
+        "Search everything the person can read in the Cube: notes people wrote, and passages of documents an admin uploaded, across every journey. " +
+        "It matches both meaning and exact words, best matches first, so a plain-language question works (e.g. \"people don't answer unknown calls\"), and so does an exact term or acronym (e.g. \"ADIP\"). If the first results miss, search again with other words. " +
+        "Each result has kind 'note' or 'document'. A note has the usual note fields and lists the journeys it came from; check status: 'superseded' means a later note replaced it, 'disputed' means the curator hasn't settled it, 'unstructured' means it hasn't been tidied yet, so read raw_text. " +
+        "A document result is one passage: its text, source_id, the document's title, chunk_index and journeys. To read the text around it, call cube_read_source with source_id and a range of chunks around chunk_index. " +
+        "Optional filters: use_case_id, journey_id (ids from cube_my_journeys; keeps notes and documents linked to that journey), since, until. The note-only filters note_type, outcome (e.g. 'did_not_work' for what went wrong), status and author_email leave documents out.",
       inputSchema: z.object({
-        query: z.string().trim().min(1).max(500).describe("Key words to look for."),
-        use_case_id: uuid("Only notes in this use case.").optional(),
-        journey_id: uuid("Only notes linked to this journey.").optional(),
-        note_type: noteType.optional().describe("Only 'learned', 'did' or 'stuck' notes."),
-        outcome: outcome.optional().describe("Only notes with this outcome."),
-        status: status.optional().describe("Only notes with this status, e.g. 'approved'."),
-        since: dateInput("Only notes created on or after this.").optional(),
-        until: dateInput("Only notes created before this.").optional(),
-        author_email: z.string().trim().email().optional().describe("Only notes by this person."),
-        limit: z.number().int().min(1).max(30).optional().describe("How many notes to return. Default 10, at most 30."),
+        query: z.string().trim().min(1).max(500).describe("The question or key words to look for."),
+        use_case_id: uuid("Only this use case.").optional(),
+        journey_id: uuid("Only notes and documents linked to this journey.").optional(),
+        note_type: noteType.optional().describe("Only 'learned', 'did' or 'stuck' notes (leaves documents out)."),
+        outcome: outcome.optional().describe("Only notes with this outcome (leaves documents out)."),
+        status: status.optional().describe("Only notes with this status, e.g. 'approved' (leaves documents out)."),
+        since: dateInput("Only notes and documents added on or after this.").optional(),
+        until: dateInput("Only notes and documents added before this.").optional(),
+        author_email: z.string().trim().email().optional().describe("Only notes by this person (leaves documents out)."),
+        limit: z.number().int().min(1).max(30).optional().describe("How many results to return. Default 10, at most 30."),
       }),
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (input, ctx) =>
-      withCaller(ctx, async (me, scope) => {
-        if (scope.useCases.length === 0) return ok({ count: 0, notes: [], message: NOT_A_MEMBER_MESSAGE });
+      withCaller(ctx, async (_me, scope) => {
+        if (scope.useCases.length === 0) return ok({ count: 0, results: [], message: NO_ACCESS_MESSAGE });
         plain(() => checkUseCaseFilter(scope, input.use_case_id));
         plain(() => checkJourneyFilter(scope, input.journey_id));
-        const { data, error } = await db().rpc("cube_search_notes", {
-          p_caller_email: me.email,
+
+        // Meaning and words when the embed function answers; words only otherwise.
+        let embedding: string | null = null;
+        try {
+          embedding = toPgVector((await embedTexts([input.query], QUICK_EMBED))[0]);
+        } catch {
+          // Logged by embedTexts.
+        }
+
+        const { data, error } = await db().rpc("cube_search_passages", {
           p_query: input.query,
-          p_use_case_id: input.use_case_id ?? null,
+          p_embedding: embedding,
+          p_use_case_ids: input.use_case_id ? [input.use_case_id] : scope.useCases.map((u) => u.id),
+          p_limit: input.limit ?? 10,
           p_journey_id: input.journey_id ?? null,
           p_note_type: input.note_type ?? null,
           p_outcome: input.outcome ?? null,
           p_status: input.status ?? null,
+          p_author_email: input.author_email?.toLowerCase() ?? null,
           p_since: input.since ? date(input.since, "since").toISOString() : null,
           p_until: input.until ? date(input.until, "until").toISOString() : null,
-          p_author_email: input.author_email?.toLowerCase() ?? null,
-          p_limit: input.limit ?? 10,
         });
         if (error) throw new Error(error.message);
-        const notes = await shapeNotes((data ?? []) as NoteRow[]);
-        return ok({ count: notes.length, notes });
+        const rows = (data ?? []) as PassageHit[];
+
+        const noteIds = rows.filter((r) => r.note_id).map((r) => r.note_id as string);
+        const sourceIds = rows.filter((r) => r.source_id).map((r) => r.source_id as string);
+        const [notes, sourceJourneys] = await Promise.all([loadNotes(noteIds), journeysOfSources(sourceIds)]);
+        const noteById = new Map(notes.map((n) => [n.id, n]));
+        const useCaseName = new Map(scope.useCases.map((u) => [u.id, u.name]));
+
+        const results: Record<string, unknown>[] = [];
+        for (const row of rows) {
+          if (row.kind === "note") {
+            const note = noteById.get(row.note_id as string);
+            if (note) results.push({ kind: "note", ...note });
+          } else {
+            results.push({
+              kind: "document",
+              text: row.text,
+              source_id: row.source_id,
+              title: row.source_title,
+              chunk_index: row.chunk_index,
+              use_case_id: row.use_case_id,
+              use_case_name: useCaseName.get(row.use_case_id) ?? null,
+              journeys: sourceJourneys.get(row.source_id as string) ?? [],
+              added_at: row.created_at,
+            });
+          }
+        }
+        const result: Record<string, unknown> = { count: results.length, results };
+        if (!embedding) result.search_mode = "words only (meaning search is unavailable right now)";
+        return ok(result);
       }),
   );
 
@@ -280,7 +324,7 @@ export function registerCubeTools(server: CubeServer): void {
     },
     async (input, ctx) =>
       withCaller(ctx, async (me, scope) => {
-        if (scope.useCases.length === 0) return ok({ count: 0, notes: [], message: NOT_A_MEMBER_MESSAGE });
+        if (scope.useCases.length === 0) return ok({ count: 0, notes: [], message: NO_ACCESS_MESSAGE });
         plain(() => checkUseCaseFilter(scope, input.use_case_id));
         plain(() => checkJourneyFilter(scope, input.journey_id));
         let author: string | null = null;
@@ -350,7 +394,7 @@ export function registerCubeTools(server: CubeServer): void {
     },
     async (input, ctx) =>
       withCaller(ctx, async (_me, scope) => {
-        if (scope.useCases.length === 0) return ok({ count: 0, questions: [], message: NOT_A_MEMBER_MESSAGE });
+        if (scope.useCases.length === 0) return ok({ count: 0, questions: [], message: NO_ACCESS_MESSAGE });
         plain(() => checkUseCaseFilter(scope, input.use_case_id));
         const ids = input.use_case_id ? [input.use_case_id] : scope.useCases.map((u) => u.id);
         let query = db()
@@ -401,4 +445,96 @@ export function registerCubeTools(server: CubeServer): void {
         return ok({ use_case_id: useCase.id, use_case_name: useCase.name, count: people.length, people });
       }),
   );
+
+  // 8. cube_read_source ----------------------------------------------------
+  server.tool(
+    {
+      name: "cube_read_source",
+      title: "Read part of a document",
+      description:
+        "Read consecutive passages of an uploaded document, in order, to see the text around a passage that cube_search_notes found. " +
+        "Pass the result's source_id and a range of chunk numbers around its chunk_index (e.g. for chunk_index 5: from_chunk 3, to_chunk 7). " +
+        "At most 10 passages per call; total_passages says how many the document has.",
+      inputSchema: z.object({
+        source_id: uuid("The document's source_id, from a cube_search_notes result."),
+        from_chunk: z.number().int().min(0).describe("First passage to return (its chunk_index)."),
+        to_chunk: z.number().int().min(0).describe("Last passage to return (its chunk_index). At most 9 more than from_chunk."),
+      }),
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async (input, ctx) =>
+      withCaller(ctx, async (_me, scope) => {
+        const { data: source, error } = await db()
+          .from("raw_sources")
+          .select("id, use_case_id, title, created_at")
+          .eq("id", input.source_id)
+          .maybeSingle();
+        if (error) throw new Error(error.message);
+        const useCase = source ? scope.useCases.find((u) => u.id === source.use_case_id) : undefined;
+        // An unknown id and an unreadable one get the same answer, so ids reveal nothing.
+        if (!source || !useCase) throw new PlainError(NO_ACCESS_MESSAGE);
+        if (input.to_chunk < input.from_chunk) throw new PlainError("to_chunk must not be less than from_chunk.");
+        const to = Math.min(input.to_chunk, input.from_chunk + MAX_READ_PASSAGES - 1);
+
+        const [passages, total, journeys] = await Promise.all([
+          db()
+            .from("raw_source_passages")
+            .select("chunk_index, text")
+            .eq("source_id", source.id)
+            .gte("chunk_index", input.from_chunk)
+            .lte("chunk_index", to)
+            .order("chunk_index", { ascending: true }),
+          db().from("raw_source_passages").select("id", { count: "exact", head: true }).eq("source_id", source.id),
+          journeysOfSources([source.id]),
+        ]);
+        if (passages.error) throw new Error(passages.error.message);
+        if (total.error) throw new Error(total.error.message);
+        return ok({
+          source_id: source.id,
+          title: source.title,
+          use_case_id: useCase.id,
+          use_case_name: useCase.name,
+          journeys: journeys.get(source.id) ?? [],
+          added_at: source.created_at,
+          total_passages: total.count ?? 0,
+          passages: passages.data ?? [],
+        });
+      }),
+  );
+}
+
+const MAX_READ_PASSAGES = 10;
+
+/** One row from cube_search_passages. */
+interface PassageHit {
+  passage_id: string;
+  kind: "note" | "document";
+  note_id: string | null;
+  source_id: string | null;
+  source_title: string | null;
+  chunk_index: number;
+  text: string;
+  use_case_id: string;
+  created_at: string;
+  score: number;
+}
+
+/** The journeys linked to each document. */
+async function journeysOfSources(sourceIds: string[]): Promise<Map<string, { id: string; name: string }[]>> {
+  const result = new Map<string, { id: string; name: string }[]>();
+  const ids = [...new Set(sourceIds)];
+  if (ids.length === 0) return result;
+  const { data, error } = await db().from("raw_source_journeys").select("source_id, journeys(id, name)").in("source_id", ids);
+  if (error) throw new Error(error.message);
+  for (const link of (data ?? []) as unknown as {
+    source_id: string;
+    journeys: { id: string; name: string } | { id: string; name: string }[] | null;
+  }[]) {
+    const list = result.get(link.source_id) ?? [];
+    for (const j of Array.isArray(link.journeys) ? link.journeys : link.journeys ? [link.journeys] : []) {
+      list.push({ id: j.id, name: j.name });
+    }
+    result.set(link.source_id, list.sort((a, b) => a.name.localeCompare(b.name)));
+  }
+  return result;
 }

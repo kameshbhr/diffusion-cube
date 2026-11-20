@@ -130,6 +130,17 @@ export default async function AdminPage() {
               initialPlaybooks={playbookRows}
               users={rows.filter((r) => r.email).map((r) => ({ id: r.id, email: r.email }))}
             />
+
+            <h2 className="font-display text-lg font-medium text-navy mt-10 mb-1">Documents</h2>
+            <p className="text-sm text-ink-soft mb-4">
+              Add documents to a use case so the Cube connector can search them alongside the team&apos;s notes.
+            </p>
+            <Link
+              href="/admin/documents"
+              className="inline-block rounded-lg bg-navy px-3 py-1.5 text-sm font-medium text-white transition hover:bg-coral"
+            >
+              Open Documents
+            </Link>
           </>
         )}
       </div>
