@@ -12,6 +12,7 @@ import { chunkText } from '@/lib/chunk-text';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_TEXT_CHARS = 3_000_000;
+const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 
 async function adminEmail(): Promise<string | null> {
   const supabase = await createClient();
@@ -69,7 +70,11 @@ export async function POST(req: Request) {
   }
   if (text.length > MAX_TEXT_CHARS) return Response.json({ status: 'skipped', reason: 'The text is too long.' });
 
-  const fullText = text.trim();
+  // PDF extraction often yields null characters (\u0000), which Postgres can't
+  // store ("unsupported Unicode escape sequence"), and other invisible control
+  // characters. They're removed; line breaks and tabs stay. The duplicate
+  // check hashes the cleaned text, so a re-upload is still a duplicate.
+  const fullText = text.replace(CONTROL_CHARS, '').trim();
   const passages = chunkText(fullText);
   if (passages.length === 0) {
     return Response.json({ status: 'skipped', reason: 'No text could be read from this file (a scanned PDF?).' });
