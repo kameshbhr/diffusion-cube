@@ -62,11 +62,33 @@ Every note returned has `id, title, raw_text`, the structured fields that are se
 
 Phase 2 tools (`cube_search_playbook`, `cube_open_conflicts`) are not built.
 
+## Usage log
+
+Every tool call, refused ones included, adds a row to `cube_tool_calls` (migration `0040`, written by `src/usage.ts` from `withCaller` in `src/tools.ts`), for a usage dashboard:
+
+- `called_at`, `email` (for a refused sign-in, the token's email, or `user:<id>`), `tool`, `duration_ms`
+- `use_case_ids`: the use case given or saved to, else every use case the caller could read at the time
+- `query`: the search text (`cube_search_notes`) or the unanswered question (`cube_log_question`). Note text is never copied; it's in `cube_notes`.
+- `params`: the other inputs (filters, `source_id` and chunk range, …)
+- `result_count` (0 = nothing found), `ok`, and `error` (the message the caller saw)
+
+Search text is people's own words, so it's blanked after 90 days by `cube_purge_tool_call_queries()`, which 0040 schedules daily with pg_cron where the project has it (otherwise run it from time to time); the counts stay. The table is service-role only. Logging never blocks a call: a failed insert is logged and dropped.
+
+Example: searches per person per week, and how many found nothing.
+
+```sql
+select email, date_trunc('week', called_at) as week, count(*) as searches,
+       count(*) filter (where result_count = 0) as found_nothing
+from cube_tool_calls
+where tool = 'cube_search_notes' and ok
+group by 1, 2 order by 2 desc, 3 desc;
+```
+
 ## Set up a development project
 
 Use a **development** Supabase project, never production.
 
-1. **Apply the migrations** `supabase/migrations/0038_cube_connector.sql` and then `0039_cube_raw_layer.sql`. 0038 drops and recreates version 1's tables (no notes were saved with them) and adds a nullable `use_case_id` to `playbooks`. Then seed a use case, its journeys and allowlist, and a playbook with its curator: edit and run `seed-example.sql`. Deploy the embed function once per project: `npx supabase functions deploy embed --project-ref <ref>` (keep JWT verification on).
+1. **Apply the migrations** `supabase/migrations/0038_cube_connector.sql`, `0039_cube_raw_layer.sql` and `0040_cube_tool_calls.sql`, in that order. 0038 drops and recreates version 1's tables (no notes were saved with them) and adds a nullable `use_case_id` to `playbooks`. Then seed a use case, its journeys and allowlist, and a playbook with its curator: edit and run `seed-example.sql`. Deploy the embed function once per project: `npx supabase functions deploy embed --project-ref <ref>` (keep JWT verification on).
 2. **OAuth server:** Authentication → OAuth Server → enable it, turn on **Allow dynamic OAuth apps** (Claude registers itself), and set the authorization path to **`/oauth/consent`**. Supabase sends people to Site URL + that path, which is the Cube app's approval page.
 3. **Cube app env:** optionally `NEXT_PUBLIC_CUBE_ALLOWED_DOMAINS` (default `ekstep.org`; same value as the connector's `CUBE_ALLOWED_DOMAINS`). It's read at build time.
 4. **Connector env:** `cp .env.example .env` and fill in the project ref, the service-role key and `ANTHROPIC_API_KEY`. `CUBE_STRUCTURING_MODEL` defaults to `claude-opus-5-5`.

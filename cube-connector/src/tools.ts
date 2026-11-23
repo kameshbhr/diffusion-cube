@@ -28,6 +28,7 @@ import {
   pickWritableUseCase,
   type CallerScope,
 } from "./scope.js";
+import { logToolCall } from "./usage.js";
 
 type CubeServer = MCPServer<SupabaseOAuthUser>;
 
@@ -55,27 +56,46 @@ class PlainError extends Error {}
 
 /**
  * Runs a tool body with the caller's identity and use-case scope, turning any
- * thrown error into a plain tool error so Claude can tell the person.
+ * thrown error into a plain tool error so Claude can tell the person. Every
+ * call, refused ones included, is then written to the usage log (usage.ts).
  */
 async function withCaller(
   ctx: TokenCtx,
+  tool: string,
+  input: object,
   body: (me: CubeIdentity, scope: CallerScope) => Promise<CallToolResult>,
 ): Promise<CallToolResult> {
-  let me: CubeIdentity;
+  const startedAt = Date.now();
+  let email = ctx.auth.user.email?.toLowerCase() || `user:${ctx.auth.user.id}`;
+  let scope: CallerScope | null = null;
+  let result: CallToolResult;
   try {
-    me = await identityForUser(ctx.auth.user.id);
+    const me = await identityForUser(ctx.auth.user.id);
+    email = me.email;
+    await ensurePerson(me);
+    try {
+      scope = await loadScope(me.email);
+      result = await body(me, scope);
+    } catch (err) {
+      if (err instanceof PlainError) result = fail(err.message);
+      else {
+        console.error("[cube-connector] tool failed:", err);
+        result = fail(`The Cube couldn't complete this: ${(err as Error).message}`);
+      }
+    }
   } catch (err) {
-    return fail((err as Error).message);
+    // Not allowed to use the connector (domain or unverified email).
+    result = fail((err as Error).message);
   }
-  await ensurePerson(me);
-  try {
-    const scope = await loadScope(me.email);
-    return await body(me, scope);
-  } catch (err) {
-    if (err instanceof PlainError) return fail(err.message);
-    console.error("[cube-connector] tool failed:", err);
-    return fail(`The Cube couldn't complete this: ${(err as Error).message}`);
-  }
+  await logToolCall({
+    email,
+    tool,
+    input: input as Record<string, unknown>,
+    readableUseCaseIds: scope ? scope.useCases.map((u) => u.id) : null,
+    result,
+    startedAt,
+  });
+  return result;
 }
 
 /** Wraps scope checks so their messages reach Claude unchanged. */
@@ -119,7 +139,7 @@ export function registerCubeTools(server: CubeServer): void {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (_input, ctx) =>
-      withCaller(ctx, async (_me, scope) => {
+      withCaller(ctx, "cube_my_journeys", _input, async (_me, scope) => {
         const result: Record<string, unknown> = { use_cases: scope.useCases };
         if (scope.useCases.length === 0) result.message = NO_ACCESS_MESSAGE;
         return ok(result);
@@ -162,7 +182,7 @@ export function registerCubeTools(server: CubeServer): void {
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },
     async (input, ctx) =>
-      withCaller(ctx, async (me, scope) => {
+      withCaller(ctx, "cube_add_note", input, async (me, scope) => {
         if (!scope.useCases.some((u) => u.access === "write")) throw new PlainError(NO_ACCESS_MESSAGE);
         const journeyIds = [...new Set(input.journey_ids ?? [])];
         let useCaseId: string;
@@ -244,7 +264,7 @@ export function registerCubeTools(server: CubeServer): void {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (input, ctx) =>
-      withCaller(ctx, async (_me, scope) => {
+      withCaller(ctx, "cube_search_notes", input, async (_me, scope) => {
         if (scope.useCases.length === 0) return ok({ count: 0, results: [], message: NO_ACCESS_MESSAGE });
         plain(() => checkUseCaseFilter(scope, input.use_case_id));
         plain(() => checkJourneyFilter(scope, input.journey_id));
@@ -323,7 +343,7 @@ export function registerCubeTools(server: CubeServer): void {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (input, ctx) =>
-      withCaller(ctx, async (me, scope) => {
+      withCaller(ctx, "cube_recent_notes", input, async (me, scope) => {
         if (scope.useCases.length === 0) return ok({ count: 0, notes: [], message: NO_ACCESS_MESSAGE });
         plain(() => checkUseCaseFilter(scope, input.use_case_id));
         plain(() => checkJourneyFilter(scope, input.journey_id));
@@ -362,7 +382,7 @@ export function registerCubeTools(server: CubeServer): void {
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },
     async (input, ctx) =>
-      withCaller(ctx, async (me, scope) => {
+      withCaller(ctx, "cube_log_question", input, async (me, scope) => {
         const useCase = plain(() => pickUseCase(scope, input.use_case_id));
         const { data, error } = await db()
           .from("cube_questions")
@@ -393,7 +413,7 @@ export function registerCubeTools(server: CubeServer): void {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (input, ctx) =>
-      withCaller(ctx, async (_me, scope) => {
+      withCaller(ctx, "cube_open_questions", input, async (_me, scope) => {
         if (scope.useCases.length === 0) return ok({ count: 0, questions: [], message: NO_ACCESS_MESSAGE });
         plain(() => checkUseCaseFilter(scope, input.use_case_id));
         const ids = input.use_case_id ? [input.use_case_id] : scope.useCases.map((u) => u.id);
@@ -428,7 +448,7 @@ export function registerCubeTools(server: CubeServer): void {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (input, ctx) =>
-      withCaller(ctx, async (_me, scope) => {
+      withCaller(ctx, "cube_team_activity", input, async (_me, scope) => {
         const useCase = plain(() => pickUseCase(scope, input.use_case_id));
         const { data, error } = await db().rpc("cube_team_activity", {
           p_use_case_id: useCase.id,
@@ -463,7 +483,7 @@ export function registerCubeTools(server: CubeServer): void {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (input, ctx) =>
-      withCaller(ctx, async (_me, scope) => {
+      withCaller(ctx, "cube_read_source", input, async (_me, scope) => {
         const { data: source, error } = await db()
           .from("raw_sources")
           .select("id, use_case_id, title, created_at")
