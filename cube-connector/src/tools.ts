@@ -20,6 +20,7 @@ import { ensurePerson, identityForUser, type CubeIdentity } from "./identity.js"
 import { loadNotes, shapeNotes, type NoteRow } from "./notes.js";
 import { saveNote, type CandidateJourney } from "./save-note.js";
 import {
+  canWrite,
   checkJourneyFilter,
   checkUseCaseFilter,
   loadScope,
@@ -130,10 +131,10 @@ export function registerCubeTools(server: CubeServer): void {
       title: "My use cases and journeys",
       description:
         "List the use cases the signed-in person can read, and the journeys in each (a journey is one team's lived experience of the use case, e.g. \"Bihar DC, 2026\"). " +
-        "Each use case has access: 'write' means the person can add notes to it, 'read' means they can only search and read it. " +
+        "Each use case has access: 'write' and 'curate' mean the person can add notes to it, 'read' means they can only search and read it. " +
         "Each use case describes itself (objective, problem, users, sector), and each journey says who the adopter is (organisation), where (geography), and the scale and impact achieved. Use these as background, and say a field is empty rather than guessing. " +
         "Every journey in the use case is listed: with write access the person can write about any of them, or a general note, and anyone can filter searches by any of them. " +
-        "Each use case also lists its playbooks; is_curator says whether the person curates a playbook. It is information only and gives no access. " +
+        "Access 'curate' means the person can also edit the use case's playbook in the Cube app (is_curator is true); it includes write. " +
         "Call this once per conversation before saving a note or filtering by journey.",
       inputSchema: z.object({}),
       annotations: { readOnlyHint: true, openWorldHint: false },
@@ -157,7 +158,7 @@ export function registerCubeTools(server: CubeServer): void {
         "The Cube works out the type, title, fields and topics itself, so don't send those. The author is recorded from sign-in: never pass a name. " +
         "Which journey: if the conversation makes it clear which journey or journeys the note is about, pass journey_ids (a note may cover several journeys of one use case, e.g. \"UP had the same problem\"). " +
         "Otherwise leave journey_ids out: if the use case has one journey the note goes to it; if it has several, the Cube links the one the note clearly names, or else keeps the note general. " +
-        "Needs write access to the use case (access 'write' in cube_my_journeys). Pass use_case_id when leaving journey_ids out and the person can write to more than one use case; if it isn't clear which, ask them. " +
+        "Needs write access to the use case (access 'write' or 'curate' in cube_my_journeys). Pass use_case_id when leaving journey_ids out and the person can write to more than one use case; if it isn't clear which, ask them. " +
         "Returns the saved note with its id and title. If structuring_pending is true, the note is saved and will be tidied up later.",
       inputSchema: z.object({
         raw_text: z.string().trim().min(1).max(8000).describe("The note in the person's own words, self-contained."),
@@ -183,7 +184,7 @@ export function registerCubeTools(server: CubeServer): void {
     },
     async (input, ctx) =>
       withCaller(ctx, "cube_add_note", input, async (me, scope) => {
-        if (!scope.useCases.some((u) => u.access === "write")) throw new PlainError(NO_ACCESS_MESSAGE);
+        if (!scope.useCases.some(canWrite)) throw new PlainError(NO_ACCESS_MESSAGE);
         const journeyIds = [...new Set(input.journey_ids ?? [])];
         let useCaseId: string;
         let inferFrom: CandidateJourney[] = [];
@@ -201,7 +202,8 @@ export function registerCubeTools(server: CubeServer): void {
             throw new PlainError("All journeys on one note must be in the same use case. Save a separate note for each use case.");
           }
           useCaseId = [...useCasesOfJourneys][0];
-          if (scope.useCases.find((u) => u.id === useCaseId)?.access !== "write") throw new PlainError(NO_ACCESS_MESSAGE);
+          const target = scope.useCases.find((u) => u.id === useCaseId);
+          if (!target || !canWrite(target)) throw new PlainError(NO_ACCESS_MESSAGE);
           if (input.use_case_id && input.use_case_id !== useCaseId) {
             throw new PlainError("use_case_id doesn't match the journeys given. Leave use_case_id out: it comes from the journeys.");
           }

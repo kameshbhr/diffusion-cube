@@ -1,13 +1,14 @@
 /**
- * A caller's use cases (migration 0039, per-use-case allowlist):
+ * A caller's use cases (per-use-case allowlist, migrations 0039 and 0041):
  *
- *   read   on the use case's allowlist (use_case_members, read or write
- *          access), or the use case is open_to_all
- *   write  on the allowlist with write access
+ *   read    on the use case's allowlist (use_case_members, any access), or
+ *           the use case is open_to_all
+ *   write   on the allowlist with write or curate
+ *   curate  on the allowlist with curate: write, plus editing the use case's
+ *           playbook in the Cube app. is_curator says so.
  *
  * CUBE_ALLOWED_DOMAINS only decides who can use the connector at all
- * (identity.ts). Curating a playbook (being one of its contributors) gives no
- * access to a use case: is_curator is shown for information only.
+ * (identity.ts).
  *
  * Membership isn't tied to a journey: a person can write about any journey in
  * a use case they can write to, or a general note. So every journey of each
@@ -16,7 +17,14 @@
 
 import { db } from "./db.js";
 
-export type Access = "read" | "write";
+export type Access = "read" | "write" | "curate";
+
+const RANK: Record<Access, number> = { read: 0, write: 1, curate: 2 };
+
+/** True for write and curate. */
+export function canWrite(useCase: { access: Access }): boolean {
+  return useCase.access !== "read";
+}
 
 export interface ScopeJourney {
   id: string;
@@ -34,7 +42,7 @@ export interface ScopeJourney {
 export interface ScopePlaybook {
   id: string;
   title: string;
-  /** True when the caller is one of this playbook's contributors (its curators). */
+  /** True when the caller has curate on the playbook's use case. */
   is_curator: boolean;
 }
 
@@ -46,9 +54,9 @@ export interface ScopeUseCase {
   problem: string | null;
   users: string | null;
   sector: string | null;
-  /** 'write' when the caller is allowlisted with write access; otherwise 'read'. */
+  /** The caller's allowlist access; 'read' when the use case is only open to all. */
   access: Access;
-  /** True when the caller curates at least one of this use case's playbooks. Information only. */
+  /** True when access is 'curate'. */
   is_curator: boolean;
   playbooks: ScopePlaybook[];
   journeys: ScopeJourney[];
@@ -61,24 +69,21 @@ export interface CallerScope {
 export const NO_ACCESS_MESSAGE = "You don't have access to this use case. Please contact the admin.";
 
 export async function loadScope(email: string): Promise<CallerScope> {
-  const [members, open, curated] = await Promise.all([
+  const [members, open] = await Promise.all([
     db().from("use_case_members").select("use_case_id, access").eq("email", email),
     db().from("use_cases").select("id").eq("open_to_all", true),
-    db().rpc("cube_curated_playbooks", { p_email: email }),
   ]);
   if (members.error) throw new Error(members.error.message);
   if (open.error) throw new Error(open.error.message);
-  if (curated.error) throw new Error(curated.error.message);
 
   const access = new Map<string, Access>();
   for (const row of (open.data ?? []) as { id: string }[]) access.set(row.id, "read");
-  for (const row of (members.data ?? []) as { use_case_id: string; access: Access }[]) {
-    if (access.get(row.use_case_id) !== "write") access.set(row.use_case_id, row.access === "write" ? "write" : "read");
+  for (const row of (members.data ?? []) as { use_case_id: string; access: string }[]) {
+    const level: Access = row.access in RANK ? (row.access as Access) : "read";
+    const current = access.get(row.use_case_id);
+    if (!current || RANK[level] > RANK[current]) access.set(row.use_case_id, level);
   }
   if (access.size === 0) return { useCases: [] };
-  const curatedPlaybookIds = new Set(
-    ((curated.data ?? []) as { playbook_id: string }[]).map((row) => row.playbook_id),
-  );
 
   const ids = [...access.keys()];
   const [useCases, journeys, playbooks] = await Promise.all([
@@ -101,7 +106,7 @@ export async function loadScope(email: string): Promise<CallerScope> {
     .map((u) => {
       const ucPlaybooks = playbookRows
         .filter((p) => p.use_case_id === u.id)
-        .map((p) => ({ id: p.id, title: p.title, is_curator: curatedPlaybookIds.has(p.id) }))
+        .map((p) => ({ id: p.id, title: p.title, is_curator: access.get(u.id) === "curate" }))
         .sort((a, b) => a.title.localeCompare(b.title));
       return {
         id: u.id,
@@ -112,7 +117,7 @@ export async function loadScope(email: string): Promise<CallerScope> {
         users: u.users ?? null,
         sector: u.sector ?? null,
         access: access.get(u.id) ?? "read",
-        is_curator: ucPlaybooks.some((p) => p.is_curator),
+        is_curator: access.get(u.id) === "curate",
         playbooks: ucPlaybooks,
         journeys: journeyRows
           .filter((j) => j.use_case_id === u.id)
@@ -161,7 +166,7 @@ export function pickUseCase(scope: CallerScope, useCaseId: string | undefined): 
  * able to write to), or the caller's only writable use case.
  */
 export function pickWritableUseCase(scope: CallerScope, useCaseId: string | undefined): ScopeUseCase {
-  const writable = scope.useCases.filter((u) => u.access === "write");
+  const writable = scope.useCases.filter(canWrite);
   if (useCaseId) {
     const found = writable.find((u) => u.id === useCaseId);
     if (!found) throw new Error(NO_ACCESS_MESSAGE);
