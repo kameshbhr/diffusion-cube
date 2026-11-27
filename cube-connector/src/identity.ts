@@ -7,6 +7,9 @@
  * tool call looks the user up server-side and requires a confirmed email in
  * an allowed domain (CUBE_ALLOWED_DOMAINS). The consent page shows the same
  * rule, but this is the check that counts.
+ *
+ * What people do is stored by their user id only (migration 0042). The email
+ * is used to find their access on the allowlist, never stored.
  */
 
 import type { User } from "@supabase/supabase-js";
@@ -15,23 +18,13 @@ import { ALLOWED_DOMAINS } from "./config.js";
 import { db } from "./db.js";
 
 export interface CubeIdentity {
+  userId: string;
   email: string;
-  name: string | null;
 }
 
 function domainOf(email: string): string | null {
   const at = email.lastIndexOf("@");
   return at === -1 ? null : email.slice(at + 1).toLowerCase();
-}
-
-function nameFromMetadata(metadata: unknown): string | null {
-  const meta = metadata && typeof metadata === "object" ? (metadata as Record<string, unknown>) : {};
-  // Cube signup stores the person's name as user_metadata.name.
-  for (const key of ["name", "full_name"]) {
-    const value = meta[key];
-    if (typeof value === "string" && value.trim()) return value.trim();
-  }
-  return null;
 }
 
 export const ALLOWED_DOMAINS_TEXT = ALLOWED_DOMAINS.map((d) => `@${d}`).join(" or ");
@@ -43,10 +36,7 @@ export function checkUser(user: User): CubeIdentity | null {
   const email = (user.email ?? "").toLowerCase();
   const domain = domainOf(email);
   if (!user.email_confirmed_at || !domain || !ALLOWED_DOMAINS.includes(domain)) return null;
-  // The name is the person's own (editable) account name, used for display
-  // only. The email, which can't be changed without re-verifying, is the
-  // real author.
-  return { email, name: nameFromMetadata(user.user_metadata) };
+  return { userId: user.id, email };
 }
 
 const USER_CHECK_TTL_MS = 5 * 60 * 1000;
@@ -76,26 +66,15 @@ export async function identityForUser(userId: string): Promise<CubeIdentity> {
   return identity;
 }
 
-const knownPeople = new Set<string>();
-
-/**
- * Adds a cube_people row on a person's first tool call after connecting
- * (sign-in itself happens in the Cube app, which can't write these tables).
- * Existing rows are left alone except to fill a missing name. Failures are
- * logged, not thrown: they must never block a note.
- */
-export async function ensurePerson(identity: CubeIdentity): Promise<void> {
-  if (knownPeople.has(identity.email)) return;
-  try {
-    const { error } = await db()
-      .from("cube_people")
-      .upsert({ email: identity.email, name: identity.name }, { onConflict: "email", ignoreDuplicates: true });
-    if (error) throw error;
-    if (identity.name) {
-      await db().from("cube_people").update({ name: identity.name }).eq("email", identity.email).is("name", null);
-    }
-    knownPeople.add(identity.email);
-  } catch (err) {
-    console.error("[cube-connector] could not record person:", err);
+/** Display names for user ids (the account's name, else its email). Only for curators. */
+export async function personNames(userIds: (string | null | undefined)[]): Promise<Map<string, string>> {
+  const ids = [...new Set(userIds.filter((id): id is string => Boolean(id)))];
+  const names = new Map<string, string>();
+  if (ids.length === 0) return names;
+  const { data, error } = await db().rpc("cube_person_names", { p_user_ids: ids });
+  if (error) throw new Error(error.message);
+  for (const row of (data ?? []) as { user_id: string; name: string | null }[]) {
+    if (row.name) names.set(row.user_id, row.name);
   }
+  return names;
 }

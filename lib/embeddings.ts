@@ -1,6 +1,8 @@
 // Copied from main @ 7b8b5ff
-// Change: main logs through logError (lib/errors.ts + sys_errors), which cube-2
-// doesn't have, so this logs with console.error.
+// Changes: main logs through logError (lib/errors.ts + sys_errors), which cube-2
+// doesn't have, so this logs with console.error; and callers can pass a
+// shorter budget (QUICK_EMBED) for a chat turn, as in the connector's copy.
+// Batches of 4 and the defaults are main's.
 
 
 // Text → 384-dim gte-small vectors through the `embed` Supabase Edge Function
@@ -25,6 +27,16 @@ const TIMEOUT_MS = 20_000;
 const RETRYABLE = new Set([503, 504, 546]);
 const RETRIES = 2;
 
+export interface EmbedBudget {
+  timeoutMs: number;
+  retries: number;
+}
+
+const DEFAULT_BUDGET: EmbedBudget = { timeoutMs: TIMEOUT_MS, retries: RETRIES };
+
+/** For a chat turn: one try of 8 s; on failure the caller searches by words only. */
+export const QUICK_EMBED: EmbedBudget = { timeoutMs: 8_000, retries: 0 };
+
 function endpoint(): { url: string; key: string } {
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -32,20 +44,20 @@ function endpoint(): { url: string; key: string } {
   return { url: `${base.replace(/\/+$/, '')}/functions/v1/embed`, key };
 }
 
-async function embedBatch(texts: string[], url: string, key: string): Promise<number[][]> {
+async function embedBatch(texts: string[], url: string, key: string, budget: EmbedBudget): Promise<number[][]> {
   let res: Response | null = null;
-  for (let attempt = 0; attempt <= RETRIES; attempt++) {
+  for (let attempt = 0; attempt <= budget.retries; attempt++) {
     if (attempt > 0) await new Promise((r) => setTimeout(r, 1000 * attempt));
     try {
       res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
         body: JSON.stringify({ texts }),
-        signal: AbortSignal.timeout(TIMEOUT_MS),
+        signal: AbortSignal.timeout(budget.timeoutMs),
       });
     } catch (err) {
       // A dropped connection ("fetch failed") is retried like a busy answer.
-      if (attempt === RETRIES) throw err;
+      if (attempt === budget.retries) throw err;
       continue;
     }
     if (res.ok || !RETRYABLE.has(res.status)) break;
@@ -63,13 +75,13 @@ async function embedBatch(texts: string[], url: string, key: string): Promise<nu
   return vectors as number[][];
 }
 
-export async function embedTexts(texts: string[]): Promise<number[][]> {
+export async function embedTexts(texts: string[], budget: EmbedBudget = DEFAULT_BUDGET): Promise<number[][]> {
   if (texts.length === 0) return [];
   const { url, key } = endpoint();
   const out: number[][] = [];
   try {
     for (let i = 0; i < texts.length; i += BATCH_SIZE) {
-      out.push(...(await embedBatch(texts.slice(i, i + BATCH_SIZE), url, key)));
+      out.push(...(await embedBatch(texts.slice(i, i + BATCH_SIZE), url, key, budget)));
     }
   } catch (err) {
     // No text in the log: only how many were asked for.

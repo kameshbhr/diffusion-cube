@@ -1,23 +1,10 @@
 import Link from 'next/link';
 import WikiMarkdown from '@/components/WikiMarkdown';
-import StateMarker from '../StateMarker';
 import { contextEntries, formatWhen, type ConversationDetail } from '@/lib/companion-v2/conversations';
 
-// One adopter conversation, read-only: what Cube knows, their job states, and
-// the transcript.
-export default function ConversationView({
-  slug,
-  conversation,
-  jobs,
-}: {
-  slug: string;
-  conversation: ConversationDetail;
-  jobs: { job_code: string; name: string; position: number | null }[];
-}) {
-  const nameOf = new Map(jobs.map((j) => [j.job_code, j.name]));
-  const order = new Map(jobs.map((j) => [j.job_code, j.position ?? 1e9]));
-  // Job states belong to the person, across all their conversations; in sequence order.
-  const states = [...conversation.job_states].sort((a, b) => (order.get(a.job) ?? 1e9) - (order.get(b.job) ?? 1e9));
+// One conversation, read-only: what Cube knows about the person's situation,
+// and the transcript.
+export default function ConversationView({ slug, conversation }: { slug: string; conversation: ConversationDetail }) {
   const ctx = contextEntries(conversation.context);
 
   return (
@@ -32,7 +19,7 @@ export default function ConversationView({
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div>
         <section className="rounded-xl border border-pb-line bg-pb-surface px-4 py-3">
           <h3 className="text-sm font-semibold text-pb-ink">What Cube knows about their situation</h3>
           {ctx.length ? (
@@ -49,29 +36,6 @@ export default function ConversationView({
           )}
         </section>
 
-        <section className="rounded-xl border border-pb-line bg-pb-surface px-4 py-3">
-          <h3 className="text-sm font-semibold text-pb-ink">Where they are on the jobs</h3>
-          <p className="text-xs text-pb-muted">From all their conversations. Jobs they haven’t talked about aren’t listed.</p>
-          {states.length ? (
-            <ul className="mt-2 space-y-2 text-sm">
-              {states.map((s) => (
-                <li key={s.job}>
-                  <span className="flex flex-wrap items-baseline justify-between gap-x-3">
-                    <span className="text-pb-ink">{nameOf.get(s.job) ?? 'A job no longer in the playbook'}</span>
-                    <StateMarker
-                      state={s.state}
-                      title={s.set_by === 'user' ? 'Set by the person' : 'Recorded by Cube from what they said'}
-                    />
-                  </span>
-                  {s.note && <span className="block break-words text-xs text-pb-muted">{s.note}</span>}
-                  {s.set_by === 'user' && <span className="block text-[11px] text-pb-muted">Set by the person</span>}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-2 text-sm text-pb-muted">None yet.</p>
-          )}
-        </section>
       </div>
 
       <section aria-label="Conversation" className="space-y-5">

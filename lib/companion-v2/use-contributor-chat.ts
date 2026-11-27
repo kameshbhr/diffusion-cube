@@ -1,7 +1,7 @@
 'use client';
 
-// The contributor's chat (their Converse tab). Conversations are saved like an
-// adopter's (companion_conversations / companion_messages, through
+// The curator's chat (their Converse tab). Conversations are saved like
+// anyone else's, by person and use case (companion_conversations / companion_messages, through
 // record_companion_turn), so they show under Recent conversations. What is
 // saved: the messages, the names and sizes of attached files (never their
 // text), and for each proposal a one-line label per change and whether it
@@ -118,9 +118,8 @@ function toHistory(messages: ContributorMessage[], base: Snapshot): { role: 'use
 // room for the new message.
 const MAX_HISTORY_MESSAGES = 38;
 const MAX_MESSAGE_CHARS = 50_000;
-// About 40k tokens: with the playbook JSON (~45k), the source document (up to
-// 100k), one upload part (~30k) and the reply (8k), this stays inside the
-// model's 200k-token context.
+// About 40k tokens: with the playbook JSON (~45k), one upload part (~30k) and
+// the reply (8k), this stays well inside the model's 200k-token context.
 const MAX_HISTORY_CHARS = 160_000;
 
 type TurnResult =
@@ -144,17 +143,15 @@ function fromRows(rows: { id: string; role: string; content: string; ui: unknown
 }
 
 export function useContributorChat({
-  playbookId,
-  memberId,
+  useCaseId,
   base,
   updatedAt,
   requestedConversationId,
 }: {
-  playbookId: string;
-  memberId: string;
+  useCaseId: string;
   base: Snapshot;
   updatedAt: string;
-  /** ?c= : a conversation id, NEW_CONVERSATION (opened from the playbook list), or null for the latest. */
+  /** ?c= : a conversation id, NEW_CONVERSATION (opened from the use case list), or null for the latest. */
   requestedConversationId?: string | null;
 }) {
   const [supabase] = useState(() => createClient());
@@ -192,8 +189,9 @@ export function useContributorChat({
     Promise.resolve().then(async () => {
       const key = requestedConversationId || 'latest';
       const fresh = requestedConversationId === NEW_CONVERSATION;
+      // Row rules keep this to the person's own conversations; only curator chats.
       const mine = () =>
-        supabase.from('companion_conversations').select('id').eq('member_id', memberId).eq('playbook_id', playbookId);
+        supabase.from('companion_conversations').select('id').eq('use_case_id', useCaseId).eq('kind', 'curator');
       let id: string | null = null;
       if (requestedConversationId && !fresh) {
         const { data } = await mine().eq('id', requestedConversationId).maybeSingle();
@@ -237,7 +235,7 @@ export function useContributorChat({
     return () => {
       cancelled = true;
     };
-  }, [requestedConversationId, memberId, playbookId, supabase, setMessages]);
+  }, [requestedConversationId, useCaseId, supabase, setMessages]);
 
   // The conversation on screen was deleted (from the sidebar): start afresh.
   useEffect(() => {
@@ -262,7 +260,7 @@ export function useContributorChat({
     if (!id) {
       const { data, error: createError } = await supabase
         .from('companion_conversations')
-        .insert({ member_id: memberId, playbook_id: playbookId })
+        .insert({ use_case_id: useCaseId, kind: 'curator' })
         .select('id')
         .single();
       if (createError || !data) {
@@ -308,7 +306,7 @@ export function useContributorChat({
       res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: 'companion-v2', role: 'contributor', playbookId, messages: history, files, part }),
+        body: JSON.stringify({ mode: 'companion-v2', role: 'contributor', useCaseId, messages: history, files, part }),
         signal,
       });
     } catch (err) {

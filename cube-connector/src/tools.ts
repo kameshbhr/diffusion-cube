@@ -7,6 +7,11 @@
  * is scoped to the use cases the caller can read (allowlisted, or open to
  * all); saving a note needs write access (scope.ts). No tool edits or deletes
  * notes or documents, and nothing here touches the playbook.
+ *
+ * People (migration 0042): what someone does is stored by user id only.
+ * Names of note authors and question askers go only to the curators of that
+ * use case; everyone else sees "by_me" or nothing. Team activity is for
+ * curators only.
  */
 
 import type { CallToolResult, MCPServer } from "mcp-use";
@@ -16,8 +21,8 @@ import { z } from "zod";
 import { DATE_INPUT_HELP, parseDateInput } from "./dates.js";
 import { db } from "./db.js";
 import { embedTexts, QUICK_EMBED, toPgVector } from "./embeddings.js";
-import { ensurePerson, identityForUser, type CubeIdentity } from "./identity.js";
-import { loadNotes, shapeNotes, type NoteRow } from "./notes.js";
+import { identityForUser, personNames, type CubeIdentity } from "./identity.js";
+import { loadNotes, shapeNotes, type NoteRow, type NoteViewer } from "./notes.js";
 import { saveNote, type CandidateJourney } from "./save-note.js";
 import {
   canWrite,
@@ -67,13 +72,10 @@ async function withCaller(
   body: (me: CubeIdentity, scope: CallerScope) => Promise<CallToolResult>,
 ): Promise<CallToolResult> {
   const startedAt = Date.now();
-  let email = ctx.auth.user.email?.toLowerCase() || `user:${ctx.auth.user.id}`;
   let scope: CallerScope | null = null;
   let result: CallToolResult;
   try {
     const me = await identityForUser(ctx.auth.user.id);
-    email = me.email;
-    await ensurePerson(me);
     try {
       scope = await loadScope(me.email);
       result = await body(me, scope);
@@ -89,7 +91,7 @@ async function withCaller(
     result = fail((err as Error).message);
   }
   await logToolCall({
-    email,
+    userId: ctx.auth.user.id,
     tool,
     input: input as Record<string, unknown>,
     readableUseCaseIds: scope ? scope.useCases.map((u) => u.id) : null,
@@ -106,6 +108,11 @@ function plain<T>(fn: () => T): T {
   } catch (err) {
     throw new PlainError((err as Error).message);
   }
+}
+
+/** How notes are shown to this caller: names only in the use cases they curate. */
+function viewerOf(me: CubeIdentity, scope: CallerScope): NoteViewer {
+  return { userId: me.userId, curated: new Set(scope.useCases.filter((u) => u.is_curator).map((u) => u.id)) };
 }
 
 function date(value: string, field: string): Date {
@@ -217,8 +224,8 @@ export function registerCubeTools(server: CubeServer): void {
         }
 
         const result = await saveNote({
-          authorEmail: me.email,
-          authorName: me.name,
+          authorId: me.userId,
+          viewer: viewerOf(me, scope),
           useCaseId,
           journeyIds,
           rawText: input.raw_text,
@@ -249,8 +256,9 @@ export function registerCubeTools(server: CubeServer): void {
         "Search everything the person can read in the Cube: notes people wrote, and passages of documents an admin uploaded, across every journey. " +
         "It matches both meaning and exact words, best matches first, so a plain-language question works (e.g. \"people don't answer unknown calls\"), and so does an exact term or acronym (e.g. \"ADIP\"). If the first results miss, search again with other words. " +
         "Each result has kind 'note' or 'document'. A note has the usual note fields and lists the journeys it came from; check status: 'superseded' means a later note replaced it, 'disputed' means the curator hasn't settled it, 'unstructured' means it hasn't been tidied yet, so read raw_text. " +
+        "Notes carry no author's name, except author_name for a curator of that use case; by_me says whether the signed-in person wrote it. Cite other people's notes as team notes, never by a guessed name. " +
         "A document result is one passage: its text, source_id, the document's title, chunk_index and journeys. To read the text around it, call cube_read_source with source_id and a range of chunks around chunk_index. " +
-        "Optional filters: use_case_id, journey_id (ids from cube_my_journeys; keeps notes and documents linked to that journey), since, until. The note-only filters note_type, outcome (e.g. 'did_not_work' for what went wrong), status and author_email leave documents out.",
+        "Optional filters: use_case_id, journey_id (ids from cube_my_journeys; keeps notes and documents linked to that journey), since, until. The note-only filters note_type, outcome (e.g. 'did_not_work' for what went wrong), status and mine (only the signed-in person's own notes) leave documents out.",
       inputSchema: z.object({
         query: z.string().trim().min(1).max(500).describe("The question or key words to look for."),
         use_case_id: uuid("Only this use case.").optional(),
@@ -260,13 +268,13 @@ export function registerCubeTools(server: CubeServer): void {
         status: status.optional().describe("Only notes with this status, e.g. 'approved' (leaves documents out)."),
         since: dateInput("Only notes and documents added on or after this.").optional(),
         until: dateInput("Only notes and documents added before this.").optional(),
-        author_email: z.string().trim().email().optional().describe("Only notes by this person (leaves documents out)."),
+        mine: z.boolean().optional().describe("Only the signed-in person's own notes (leaves documents out)."),
         limit: z.number().int().min(1).max(30).optional().describe("How many results to return. Default 10, at most 30."),
       }),
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (input, ctx) =>
-      withCaller(ctx, "cube_search_notes", input, async (_me, scope) => {
+      withCaller(ctx, "cube_search_notes", input, async (me, scope) => {
         if (scope.useCases.length === 0) return ok({ count: 0, results: [], message: NO_ACCESS_MESSAGE });
         plain(() => checkUseCaseFilter(scope, input.use_case_id));
         plain(() => checkJourneyFilter(scope, input.journey_id));
@@ -288,7 +296,7 @@ export function registerCubeTools(server: CubeServer): void {
           p_note_type: input.note_type ?? null,
           p_outcome: input.outcome ?? null,
           p_status: input.status ?? null,
-          p_author_email: input.author_email?.toLowerCase() ?? null,
+          p_author_id: input.mine ? me.userId : null,
           p_since: input.since ? date(input.since, "since").toISOString() : null,
           p_until: input.until ? date(input.until, "until").toISOString() : null,
         });
@@ -297,7 +305,7 @@ export function registerCubeTools(server: CubeServer): void {
 
         const noteIds = rows.filter((r) => r.note_id).map((r) => r.note_id as string);
         const sourceIds = rows.filter((r) => r.source_id).map((r) => r.source_id as string);
-        const [notes, sourceJourneys] = await Promise.all([loadNotes(noteIds), journeysOfSources(sourceIds)]);
+        const [notes, sourceJourneys] = await Promise.all([loadNotes(noteIds, viewerOf(me, scope)), journeysOfSources(sourceIds)]);
         const noteById = new Map(notes.map((n) => [n.id, n]));
         const useCaseName = new Map(scope.useCases.map((u) => [u.id, u.name]));
 
@@ -333,13 +341,14 @@ export function registerCubeTools(server: CubeServer): void {
       title: "List recent Cube notes",
       description:
         "List notes added in a date range in the person's use cases, across every journey, newest first. Use for digests, nudges and curator reports. " +
-        "Optional filters: use_case_id, journey_id (ids from cube_my_journeys), and author: 'me' for the signed-in person's own notes, or a person's email.",
+        "Notes carry no author's name, except author_name for a curator of that use case; by_me says whether the signed-in person wrote it. " +
+        "Optional filters: use_case_id, journey_id (ids from cube_my_journeys), and mine: true for the signed-in person's own notes.",
       inputSchema: z.object({
         since: dateInput("Notes created on or after this (required)."),
         until: dateInput("Notes created before this.").optional(),
         use_case_id: uuid("Only notes in this use case.").optional(),
         journey_id: uuid("Only notes linked to this journey.").optional(),
-        author: z.string().trim().min(1).optional().describe("'me' or a person's email."),
+        mine: z.boolean().optional().describe("Only the signed-in person's own notes."),
         limit: z.number().int().min(1).max(200).optional().describe("How many notes to return. Default 50, at most 200."),
       }),
       annotations: { readOnlyHint: true, openWorldHint: false },
@@ -349,22 +358,16 @@ export function registerCubeTools(server: CubeServer): void {
         if (scope.useCases.length === 0) return ok({ count: 0, notes: [], message: NO_ACCESS_MESSAGE });
         plain(() => checkUseCaseFilter(scope, input.use_case_id));
         plain(() => checkJourneyFilter(scope, input.journey_id));
-        let author: string | null = null;
-        if (input.author) {
-          author = input.author.toLowerCase() === "me" ? me.email : input.author.toLowerCase();
-          if (!author.includes("@")) throw new PlainError("author must be 'me' or an email address.");
-        }
         const { data, error } = await db().rpc("cube_recent_notes", {
-          p_caller_email: me.email,
+          p_use_case_ids: input.use_case_id ? [input.use_case_id] : scope.useCases.map((u) => u.id),
           p_since: date(input.since, "since").toISOString(),
           p_until: input.until ? date(input.until, "until").toISOString() : null,
-          p_use_case_id: input.use_case_id ?? null,
           p_journey_id: input.journey_id ?? null,
-          p_author_email: author,
+          p_author_id: input.mine ? me.userId : null,
           p_limit: input.limit ?? 50,
         });
         if (error) throw new Error(error.message);
-        const notes = await shapeNotes((data ?? []) as NoteRow[]);
+        const notes = await shapeNotes((data ?? []) as NoteRow[], viewerOf(me, scope));
         return ok({ count: notes.length, notes });
       }),
   );
@@ -376,7 +379,7 @@ export function registerCubeTools(server: CubeServer): void {
       title: "Log a question the Cube couldn't answer",
       description:
         "Record a question the Cube had no notes on (or only partly answered), so the use case's curator sees it. " +
-        "Write the question plainly, as the person asked it. Pass use_case_id if the person has more than one use case. Who asked and when are recorded automatically.",
+        "Write the question plainly, as the person asked it, without names or contact details. Pass use_case_id if the person has more than one use case. Who asked and when are recorded automatically.",
       inputSchema: z.object({
         question: z.string().trim().min(1).max(2000).describe("The unanswered question."),
         use_case_id: uuid("The use case the question is about. Optional if the person has only one.").optional(),
@@ -391,10 +394,9 @@ export function registerCubeTools(server: CubeServer): void {
           .insert({
             use_case_id: useCase.id,
             question: input.question,
-            asked_by_email: me.email,
-            asked_by_name: me.name,
+            asked_by: me.userId,
           })
-          .select("id, use_case_id, question, asked_by_name, asked_by_email, created_at, resolved")
+          .select("id, use_case_id, question, created_at, resolved")
           .single();
         if (error) throw new Error(error.message);
         return ok({ logged: true, question: { ...data, use_case_name: useCase.name } });
@@ -407,7 +409,8 @@ export function registerCubeTools(server: CubeServer): void {
       name: "cube_open_questions",
       title: "List open questions",
       description:
-        "List questions the Cube couldn't answer that nobody has resolved yet, in the person's use cases, newest first. Optional: use_case_id, since.",
+        "List questions the Cube couldn't answer that nobody has resolved yet, in the person's use cases, newest first, from the Cube app and from Claude. " +
+        "asked_by_me says whether the signed-in person asked it; only a curator of the use case also gets asked_by_name. Optional: use_case_id, since.",
       inputSchema: z.object({
         use_case_id: uuid("Only questions in this use case.").optional(),
         since: dateInput("Only questions logged on or after this.").optional(),
@@ -415,13 +418,13 @@ export function registerCubeTools(server: CubeServer): void {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (input, ctx) =>
-      withCaller(ctx, "cube_open_questions", input, async (_me, scope) => {
+      withCaller(ctx, "cube_open_questions", input, async (me, scope) => {
         if (scope.useCases.length === 0) return ok({ count: 0, questions: [], message: NO_ACCESS_MESSAGE });
         plain(() => checkUseCaseFilter(scope, input.use_case_id));
         const ids = input.use_case_id ? [input.use_case_id] : scope.useCases.map((u) => u.id);
         let query = db()
           .from("cube_questions")
-          .select("id, use_case_id, question, asked_by_name, asked_by_email, created_at")
+          .select("id, use_case_id, question, asked_by, created_at")
           .in("use_case_id", ids)
           .eq("resolved", false)
           .order("created_at", { ascending: false })
@@ -429,8 +432,22 @@ export function registerCubeTools(server: CubeServer): void {
         if (input.since) query = query.gte("created_at", date(input.since, "since").toISOString());
         const { data, error } = await query;
         if (error) throw new Error(error.message);
-        const names = new Map(scope.useCases.map((u) => [u.id, u.name]));
-        const questions = (data ?? []).map((q) => ({ ...q, use_case_name: names.get(q.use_case_id as string) ?? null }));
+        const rows = (data ?? []) as { id: string; use_case_id: string; question: string; asked_by: string | null; created_at: string }[];
+        const useCaseName = new Map(scope.useCases.map((u) => [u.id, u.name]));
+        const curated = viewerOf(me, scope).curated;
+        const askers = await personNames(rows.filter((q) => curated.has(q.use_case_id)).map((q) => q.asked_by));
+        const questions = rows.map((q) => {
+          const out: Record<string, unknown> = {
+            id: q.id,
+            use_case_id: q.use_case_id,
+            use_case_name: useCaseName.get(q.use_case_id) ?? null,
+            question: q.question,
+            created_at: q.created_at,
+            asked_by_me: q.asked_by === me.userId,
+          };
+          if (curated.has(q.use_case_id)) out.asked_by_name = (q.asked_by && askers.get(q.asked_by)) || null;
+          return out;
+        });
         return ok({ count: questions.length, questions });
       }),
   );
@@ -441,7 +458,7 @@ export function registerCubeTools(server: CubeServer): void {
       name: "cube_team_activity",
       title: "Team activity",
       description:
-        "One row per person in a use case (its members and the curators of its playbooks): name, email, the journeys they've written about, number of notes since the given date, and the date of their last note. " +
+        "For curators only (access 'curate' on the use case). One row per person on the use case's allowlist: name, email, access, the journeys they've written about, number of notes since the given date, and the date of their last note. " +
         "Includes people with zero notes. Pass use_case_id if the person has more than one use case. For learning, not for judging people.",
       inputSchema: z.object({
         use_case_id: uuid("The use case. Optional if the person has only one.").optional(),
@@ -451,7 +468,10 @@ export function registerCubeTools(server: CubeServer): void {
     },
     async (input, ctx) =>
       withCaller(ctx, "cube_team_activity", input, async (_me, scope) => {
-        const useCase = plain(() => pickUseCase(scope, input.use_case_id));
+        const curated = scope.useCases.filter((u) => u.is_curator);
+        if (!input.use_case_id && curated.length === 0) throw new PlainError(CURATORS_ONLY);
+        const useCase = plain(() => pickUseCase(input.use_case_id ? scope : { useCases: curated }, input.use_case_id));
+        if (!useCase.is_curator) throw new PlainError(CURATORS_ONLY);
         const { data, error } = await db().rpc("cube_team_activity", {
           p_use_case_id: useCase.id,
           p_since: date(input.since, "since").toISOString(),
@@ -460,6 +480,7 @@ export function registerCubeTools(server: CubeServer): void {
         const people = ((data ?? []) as Record<string, unknown>[]).map((p) => ({
           name: p.name ?? null,
           email: p.email,
+          access: p.access,
           journeys: p.journeys ?? [],
           notes_in_period: Number(p.notes_in_period ?? 0),
           last_note_at: p.last_note_at ?? null,
@@ -526,6 +547,7 @@ export function registerCubeTools(server: CubeServer): void {
 }
 
 const MAX_READ_PASSAGES = 10;
+const CURATORS_ONLY = "Team activity is only for the use case's curators.";
 
 /** One row from cube_search_passages. */
 interface PassageHit {

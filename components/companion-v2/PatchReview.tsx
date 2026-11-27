@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { diffLines, diffWords, type Change } from 'diff';
 import { createClient } from '@/lib/supabase/client';
-import { applyOps, checkGuards, checkSize, checkWarnings, isEmptySave, toSave, type OpResult, type PatchOp, type Snapshot } from '@/lib/companion-v2/patch';
+import { applyOps, checkGuards, checkWarnings, isEmptySave, toSave, type OpResult, type PatchOp, type Snapshot } from '@/lib/companion-v2/patch';
 import { beforeAfter, editableKey, opLabel } from '@/lib/companion-v2/patch-display';
 import { savePlaybook } from '@/lib/companion-v2/save';
 import type { Contradiction } from '@/lib/companion-v2/playbook-patch';
@@ -162,7 +162,7 @@ export default function PatchReview({
       perOp: cards.map((c) => c.result),
       applied,
       save: toSave(base, s),
-      guards: [...checkGuards(s), ...checkSize(base, s)],
+      guards: checkGuards(s),
       warnings: checkWarnings(base, s),
     };
   }, [base, effective, include]);

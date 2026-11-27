@@ -76,7 +76,6 @@ export default function PlaybookView({ playbook, jobs }: { playbook: PlaybookRow
         overview: playbook.overview ?? {},
         roles: playbook.roles ?? [],
         sequence: playbook.sequence ?? {},
-        source_doc: playbook.source_doc ?? '',
       },
       jobs,
     }),

@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 
 // Cube raw layer: upload documents to a use case, embed their passages in
 // short batches with progress, and list what each use case holds.
-// Server side: app/api/admin/documents/{route,embed,metadata}.
+// Server side: app/api/documents/{route,embed,metadata}. Used on the admin
+// page (every use case) and on a use case's Documents tab (lockedUseCaseId).
 
 interface UseCase {
   id: string;
@@ -19,7 +20,9 @@ interface DocumentRow {
   id: string;
   use_case_id: string;
   title: string;
-  added_by_email: string;
+  /** Shown to admins and the use case's curators only; null for everyone else. */
+  added_by_name: string | null;
+  added_by_me: boolean;
   created_at: string;
   passages: number;
   pending: number;
@@ -64,7 +67,8 @@ async function errorText(res: Response, fallback: string): Promise<string> {
   return typeof data.error === 'string' ? data.error : fallback;
 }
 
-export default function AdminDocumentsPanel() {
+/** lockedUseCaseId: a use case's Documents tab, for that use case only (no picker). */
+export default function AdminDocumentsPanel({ lockedUseCaseId }: { lockedUseCaseId?: string } = {}) {
   const [useCases, setUseCases] = useState<UseCase[]>([]);
   const [journeys, setJourneys] = useState<Journey[]>([]);
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
@@ -72,7 +76,7 @@ export default function AdminDocumentsPanel() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
-  const [useCaseId, setUseCaseId] = useState('');
+  const [useCaseId, setUseCaseId] = useState(lockedUseCaseId ?? '');
   const [journeyIds, setJourneyIds] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [results, setResults] = useState<FileResult[]>([]);
@@ -84,7 +88,7 @@ export default function AdminDocumentsPanel() {
   const load = useCallback(async () => {
     let data;
     try {
-      const res = await fetch('/api/admin/documents', { cache: 'no-store' });
+      const res = await fetch('/api/documents', { cache: 'no-store' });
       if (!res.ok) {
         setLoadError(await errorText(res, 'Could not load documents.'));
         return;
@@ -122,7 +126,7 @@ export default function AdminDocumentsPanel() {
     const skip: string[] = [];
     try {
       for (;;) {
-        const res = await fetch('/api/admin/documents/embed', {
+        const res = await fetch('/api/documents/embed', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ add_note_passages: addNotePassages && first, skip }),
@@ -191,7 +195,7 @@ export default function AdminDocumentsPanel() {
       updateResult(i, { state: 'saving' });
       let data;
       try {
-        const res = await fetch('/api/admin/documents', {
+        const res = await fetch('/api/documents', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ use_case_id: useCaseId, journey_ids: journeyIds, title: file.name, text }),
@@ -216,7 +220,7 @@ export default function AdminDocumentsPanel() {
       anySaved = true;
       updateResult(i, { state: 'saved', detail: `${data.passages} passages`, metadata: 'Checking metadata…' });
       try {
-        const meta = await fetch('/api/admin/documents/metadata', {
+        const meta = await fetch('/api/documents/metadata', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ source_id: data.source_id }),
@@ -247,6 +251,9 @@ export default function AdminDocumentsPanel() {
 
   if (loadError) return <p className="text-sm text-coral">{loadError}</p>;
   if (!loaded) return <p className="text-sm text-ink-soft">Loading…</p>;
+  if (lockedUseCaseId && !useCases.some((u) => u.id === lockedUseCaseId)) {
+    return <p className="text-sm text-ink-soft">You can&apos;t add documents to this use case. Please contact the admin.</p>;
+  }
   if (useCases.length === 0) {
     return <p className="text-sm text-ink-soft">No use cases yet. Add one with SQL (see cube-connector/seed-example.sql).</p>;
   }
@@ -256,6 +263,7 @@ export default function AdminDocumentsPanel() {
   return (
     <div className="space-y-6">
       <form onSubmit={upload} className="rounded-xl border border-navy/10 bg-white p-4 space-y-4">
+        {!lockedUseCaseId && (
         <label className="flex flex-wrap items-center gap-2 text-sm text-ink">
           Use case
           <select
@@ -274,6 +282,7 @@ export default function AdminDocumentsPanel() {
             ))}
           </select>
         </label>
+        )}
 
         {ucJourneys.length > 0 && (
           <fieldset className="text-sm text-ink">
@@ -362,7 +371,7 @@ export default function AdminDocumentsPanel() {
         {embedError && <p className="mt-2 text-sm text-coral">{embedError}</p>}
       </div>
 
-      {useCases.map((u) => {
+      {(lockedUseCaseId ? useCases.filter((u) => u.id === lockedUseCaseId) : useCases).map((u) => {
         const docs = documents.filter((d) => d.use_case_id === u.id);
         return (
           <section key={u.id}>
@@ -381,7 +390,8 @@ export default function AdminDocumentsPanel() {
                     </div>
                     <p className="text-xs text-ink-soft">
                       {d.journeys.length > 0 ? `${d.journeys.join(', ')} · ` : ''}
-                      Added by {d.added_by_email} on {new Date(d.created_at).toLocaleDateString()}
+                      {d.added_by_me ? 'Added by you' : d.added_by_name ? `Added by ${d.added_by_name}` : 'Added'} on{' '}
+                      {new Date(d.created_at).toLocaleDateString()}
                     </p>
                   </li>
                 ))}

@@ -1,16 +1,21 @@
-// The contributor Digest (docs/design/cube2-plan.md section 9): building the
+// The curators' Digest (docs/design/cube2-plan.md section 9; across the web
+// app and the connector since docs/design/cube-usecase-plan.md): building the
 // model's input, the output schema, validating what the model returns, and
 // the view shown on the Digest tab. Pure: no React, no server imports, so it
 // can be checked with a plain Node script.
 //
 // Code, never the model, decides: which items survive (every cited reference
 // must be real), how many people stand behind an item, the dates and kind of
-// an unanswered question, journey-state counts, and what remains after
-// conversations are deleted. People are run-local labels (U1, U2): no user
+// an unanswered question, and what remains after conversations are deleted.
+// Everything that came through Claude (the connector) shares the conversation
+// id CONNECTOR. People are run-local labels (U1, U2): no user
 // id, member id, name or email is ever stored or shown.
 
 import { cap, scrubContact } from './ui-action';
-import { GAP_KINDS, JOB_STATES, type GapKind, type JobState } from './types';
+import { GAP_KINDS, type GapKind } from './types';
+
+/** The conversation id shared by connector searches and questions logged through Claude. */
+export const CONNECTOR = 'connector';
 
 export const DIGEST_PERIODS = [7, 30] as const;
 export type DigestPeriod = (typeof DIGEST_PERIODS)[number];
@@ -30,6 +35,14 @@ export interface DigestStats {
   users_period: number;
   conversations_total: number;
   conversations_period: number;
+  /** Searches through Claude (the connector) that covered this use case. */
+  connector_searches_period: number;
+  connector_people_period: number;
+  connector_found_nothing_period: number;
+  /** Searches through Claude across several use cases (this one included) or none: only counted. */
+  connector_other_searches_period: number;
+  /** Notes added to the use case (any channel). */
+  notes_period: number;
   jobs: { job: string; name: string; conversations: number }[];
   conversation_ids: string[];
 }
@@ -38,23 +51,6 @@ export interface RawDigestInput {
   messages_total: number;
   messages: { id: string; conversation_id: string; person: number; created_at: string; content: string }[];
   gaps: { id: string; conversation_id: string; person: number; created_at: string; gap: unknown }[];
-}
-
-export interface StateCountRow {
-  job_code: string;
-  state: string;
-  people: number;
-}
-
-export type StateCounts = Record<string, Partial<Record<JobState, number>>>;
-
-export function toStateCounts(rows: StateCountRow[]): StateCounts {
-  const out: StateCounts = {};
-  for (const r of rows) {
-    if (!JOB_STATES.includes(r.state as JobState)) continue;
-    (out[r.job_code] ??= {})[r.state as JobState] = Number(r.people);
-  }
-  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -76,7 +72,7 @@ export interface Unanswered {
   dates: string[];
   convs: ConvRef[];
 }
-export interface Stuck { job: string; observation: string; convs: ConvRef[]; state_only: boolean }
+export interface Stuck { job: string; observation: string; convs: ConvRef[] }
 export interface Term { term: string; observation: string; convs: ConvRef[] }
 export interface Remark { about: 'cube' | 'playbook'; summary: string; convs: ConvRef[] }
 
@@ -128,7 +124,6 @@ export interface BuiltInput {
 export function buildDigestInput(
   raw: RawDigestInput,
   jobs: { job_code: string; name: string }[],
-  states: StateCounts,
   period: DigestPeriod,
   now = new Date()
 ): BuiltInput {
@@ -141,13 +136,15 @@ export function buildDigestInput(
   };
 
   const refs: RefMaps = { M: new Map(), G: new Map() };
-  const convs = new Map<string, string>();
+  // Conversation and person pairs: everything through Claude shares the
+  // conversation id CONNECTOR, so a conversation alone doesn't name a person.
+  const convs = new Map<string, ConvRef>();
 
   const messageLines = raw.messages.map((m, i) => {
     const ref = `M${i + 1}`;
     const p = personOf(Number(m.person));
     refs.M.set(ref, { c: m.conversation_id, p });
-    convs.set(m.conversation_id, p);
+    convs.set(`${m.conversation_id}|${p}`, { c: m.conversation_id, p });
     const text = cap(oneLine(scrubContact(m.content)), MESSAGE_CHARS);
     return `${ref} | ${p} | ${dayOf(m.created_at)} | ${text}`;
   });
@@ -167,14 +164,11 @@ export function buildDigestInput(
     const p = personOf(Number(g.person));
     const date = dayOf(g.created_at);
     refs.G.set(ref, { c: g.conversation_id, p, date, kind });
-    convs.set(g.conversation_id, p);
+    convs.set(`${g.conversation_id}|${p}`, { c: g.conversation_id, p });
     gapLines.push(`${ref} | ${p} | ${date} | ${kind} | ${job} | ${topic} | ${question}`);
   }
 
-  const jobLines = jobs.map((j) => {
-    const s = states[j.job_code] ?? {};
-    return `${j.job_code} | ${oneLine(j.name)} | ${s.discussed ?? 0} | ${s.in_progress ?? 0} | ${s.done ?? 0} | ${s.skipped ?? 0}`;
-  });
+  const jobLines = jobs.map((j) => `${j.job_code} | ${oneLine(j.name)}`);
 
   const from = dayOf(new Date(now.getTime() - period * 86_400_000).toISOString());
   const capped = raw.messages_total > raw.messages.length;
@@ -183,7 +177,7 @@ export function buildDigestInput(
     `People in this period: ${label.size}. Messages: ${raw.messages.length}${capped ? ` (the most recent ${raw.messages.length} of ${raw.messages_total})` : ''}. Gap entries: ${gapLines.length}.`,
     '',
     '<jobs>',
-    'code | name | discussed | in progress | done | skipped   (current journey-state counts, till date, people per state)',
+    'code | name',
     ...jobLines,
     '</jobs>',
     '',
@@ -208,7 +202,7 @@ export function buildDigestInput(
       messages_used: raw.messages.length,
       messages_total: Number(raw.messages_total),
       gaps_used: gapLines.length,
-      convs: [...convs].map(([c, p]) => ({ c, p })),
+      convs: [...convs.values()],
     },
   };
 }
@@ -266,7 +260,7 @@ export const DIGEST_TOOL = {
           properties: {
             job: { type: 'string' },
             observation: { type: 'string' },
-            evidence: refList('M', 'Message refs (M…); may be empty if it rests only on the state counts'),
+            evidence: refList('M', 'Message refs (M…) it rests on'),
           },
           required: ['job', 'observation', 'evidence'],
         },
@@ -362,12 +356,18 @@ function resolve<T extends ConvRef>(v: unknown, map: Map<string, T>): T[] | null
   return out;
 }
 
-/** Distinct conversations, each with its person. */
+/** Distinct conversation and person pairs (several people share CONNECTOR). */
 const toConvs = (refs: ConvRef[]): ConvRef[] => {
-  const seen = new Map<string, string>();
-  for (const r of refs) if (!seen.has(r.c)) seen.set(r.c, r.p);
-  return [...seen].map(([c, p]) => ({ c, p }));
+  const seen = new Map<string, ConvRef>();
+  for (const r of refs) if (!seen.has(`${r.c}|${r.p}`)) seen.set(`${r.c}|${r.p}`, { c: r.c, p: r.p });
+  return [...seen.values()];
 };
+
+/** The view of a set of pairs: distinct conversations, and how many people. */
+const countOf = (convs: ConvRef[]) => ({
+  convIds: [...new Set(convs.map((c) => c.c))],
+  people: new Set(convs.map((c) => c.p)).size,
+});
 
 /**
  * Turns the model's tool input into the stored payload. Items that cite
@@ -377,7 +377,7 @@ const toConvs = (refs: ConvRef[]): ConvRef[] => {
 export function validateDigest(
   raw: unknown,
   refs: RefMaps,
-  ctx: { jobCodes: Set<string>; states: StateCounts; period: DigestPeriod; basis: DigestPayload['basis'] }
+  ctx: { jobCodes: Set<string>; period: DigestPeriod; basis: DigestPayload['basis'] }
 ): DigestPayload {
   const r = (raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}) as Record<string, unknown>;
   // Original index (as the model numbered it) → index among kept items.
@@ -428,11 +428,8 @@ export function validateDigest(
     const job = typeof s?.job === 'string' && ctx.jobCodes.has(s.job) ? s.job : null;
     if (!s || !job || !observation) return;
     const ev = resolve(s.evidence, refs.M);
-    if (!ev) return;
-    // No message evidence: kept only if there are journey states for the job.
-    const hasStates = Object.values(ctx.states[job] ?? {}).some((n) => (n ?? 0) > 0);
-    if (!ev.length && !hasStates) return;
-    keep('stuck', stuck, i, { job, observation, convs: toConvs(ev), state_only: ev.length === 0 });
+    if (!ev?.length) return;
+    keep('stuck', stuck, i, { job, observation, convs: toConvs(ev) });
   });
 
   const terms: Term[] = [];
@@ -504,12 +501,6 @@ export interface DigestView {
   working: ViewItem<Remark>[];
 }
 
-/**
- * Drops conversations that no longer exist (deleted by the person, or by
- * account deletion), recounts people from what remains, and hides any item
- * or summary bullet left with nothing. A "stuck" item that rests only on
- * journey states has no conversations and stays.
- */
 /** Conversation refs of a stored item; tolerates a malformed payload. */
 const convsOf = (item: unknown): ConvRef[] => {
   const list = item && typeof item === 'object' ? (item as { convs?: unknown }).convs : null;
@@ -530,27 +521,32 @@ const REQUIRED: Record<Section, string[]> = {
 const wellFormed = (section: Section, item: unknown) =>
   !!item && typeof item === 'object' && REQUIRED[section].every((k) => typeof (item as Record<string, unknown>)[k] === 'string');
 
+/**
+ * Drops conversations that no longer exist (deleted by the person, or by
+ * account deletion), recounts people from what remains, and hides any item
+ * or summary bullet left with nothing.
+ */
 export function viewDigest(payload: DigestPayload, live: Set<string>): DigestView {
   const p = (payload && typeof payload === 'object' ? payload : {}) as Partial<DigestPayload>;
-  const viewOf = <T,>(item: T, alwaysShow = false): ViewItem<T> | null => {
-    const convs = convsOf(item).filter((c) => live.has(c.c));
-    if (!convs.length && !alwaysShow) return null;
-    return { item, convIds: convs.map((c) => c.c), people: new Set(convs.map((c) => c.p)).size };
+  const viewOf = <T,>(item: T): ViewItem<T> | null => {
+    const convs = toConvs(convsOf(item).filter((c) => live.has(c.c)));
+    if (!convs.length) return null;
+    return { item, ...countOf(convs) };
   };
   // Keep each section's original positions so summary refs still line up.
-  const sectionView = <T,>(section: Section, always?: (t: T) => boolean) =>
+  const sectionView = <T,>(section: Section) =>
     arr(p[section]).map((t) => {
       if (!wellFormed(section, t)) return null;
       const item = t as T;
       if (section === 'themes') (item as Theme).jobs = arr((item as Theme).jobs).filter((j): j is string => typeof j === 'string');
       if (section === 'unanswered') (item as Unanswered).dates = arr((item as Unanswered).dates).filter((d): d is string => typeof d === 'string');
-      return viewOf(item, always?.(item));
+      return viewOf(item);
     });
 
   const all: Record<Section, (ViewItem<unknown> | null)[]> = {
     themes: sectionView<Theme>('themes'),
     unanswered: sectionView<Unanswered>('unanswered'),
-    stuck: sectionView<Stuck>('stuck', (s) => s.state_only === true),
+    stuck: sectionView<Stuck>('stuck'),
     terms: sectionView<Term>('terms'),
     complaints: sectionView<Remark>('complaints'),
     working: sectionView<Remark>('working'),
@@ -568,18 +564,17 @@ export function viewDigest(payload: DigestPayload, live: Set<string>): DigestVie
     });
     // A bullet is shown only while every item it rests on is still shown.
     if (!cited.length || cited.some((c) => !c)) continue;
-    const convs = new Map<string, string>();
-    for (const c of cited) for (const cv of convsOf(c!.item)) if (live.has(cv.c)) convs.set(cv.c, cv.p);
-    summary.push({ text: b.text, convIds: [...convs.keys()], people: new Set(convs.values()).size });
+    const convs = toConvs(cited.flatMap((c) => convsOf(c!.item)).filter((cv) => live.has(cv.c)));
+    summary.push({ text: b.text, ...countOf(convs) });
   }
 
-  const basisConvs = convsOf(p.basis).filter((c) => live.has(c.c));
+  const basisConvs = countOf(toConvs(convsOf(p.basis).filter((c) => live.has(c.c))));
   const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
   const present = <T,>(xs: (ViewItem<unknown> | null)[]) => xs.filter((x): x is ViewItem<T> => x !== null);
   return {
     basis: {
-      people: new Set(basisConvs.map((c) => c.p)).size,
-      conversations: basisConvs.length,
+      people: basisConvs.people,
+      conversations: basisConvs.convIds.length,
       messagesUsed: num(p.basis?.messages_used),
       messagesTotal: num(p.basis?.messages_total),
     },

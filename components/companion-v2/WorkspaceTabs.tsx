@@ -3,30 +3,36 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { confirmLeave } from '@/lib/companion-v2/leave-warning';
+import type { UseCaseAccess } from '@/lib/use-case-access';
 
 interface Props {
   slug: string;
-  isContributor: boolean;
-  /** From can_run_digest() in the database, not from the member role. */
-  canDigest: boolean;
+  access: UseCaseAccess;
+  hasPlaybook: boolean;
 }
 
-// Adopters see two screens (Home, Jobs). Contributors also see their tools.
-export default function WorkspaceTabs({ slug, isContributor, canDigest }: Props) {
+// Tabs of a use case, by the person's access (docs/design/cube-usecase-plan.md):
+//   everyone          Converse, View Jobs (when there's a playbook)
+//   write and curate  + Documents
+//   curate            + Playbook, Assets, Digest (with a playbook)
+export default function WorkspaceTabs({ slug, access, hasPlaybook }: Props) {
   const pathname = usePathname();
   const base = `/companion/${slug}`;
+  const curator = access === 'curate' && hasPlaybook;
 
   const tabs = [
     { href: base, label: 'Converse', exact: true },
-    // Contributors see every job in the Playbook tab; View Jobs is the adopter's.
-    ...(isContributor
+    // Curators see every job in the Playbook tab; View Jobs is everyone else's.
+    ...(hasPlaybook && !curator ? [{ href: `${base}/jobs`, label: 'View Jobs' }] : []),
+    ...(curator
       ? [
           { href: `${base}/playbook`, label: 'Playbook' },
           { href: `${base}/assets`, label: 'Assets' },
         ]
-      : [{ href: `${base}/jobs`, label: 'View Jobs' }]),
+      : []),
+    ...(access !== 'read' ? [{ href: `${base}/documents`, label: 'Documents' }] : []),
     // The raw conversations sit behind the Digest ("Browse all conversations").
-    ...(canDigest ? [{ href: `${base}/digest`, label: 'Digest', also: [`${base}/conversations`] }] : []),
+    ...(curator ? [{ href: `${base}/digest`, label: 'Digest', also: [`${base}/conversations`] }] : []),
   ] as { href: string; label: string; exact?: boolean; also?: string[] }[];
 
   return (

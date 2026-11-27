@@ -3,6 +3,8 @@
  * usage dashboard. Written by withCaller in tools.ts after every call,
  * including refused ones.
  *
+ * The caller is stored by user id only (migration 0042), never by email.
+ *
  * Search text is stored (cube_search_notes' query, cube_log_question's
  * question) and blanked after 90 days by the database. Note text is never
  * copied here; it's already in cube_notes.
@@ -15,7 +17,8 @@ import type { CallToolResult } from "mcp-use";
 import { db } from "./db.js";
 
 export interface ToolCallLog {
-  email: string;
+  /** The signed-in Supabase user. */
+  userId: string;
   tool: string;
   input: Record<string, unknown>;
   /** Use cases the caller could read, when they were loaded. */
@@ -83,7 +86,7 @@ export async function logToolCall(log: ToolCallLog): Promise<void> {
     const { error } = await db()
       .from("cube_tool_calls")
       .insert({
-        email: log.email,
+        user_id: log.userId,
         tool: log.tool,
         use_case_ids: useCaseIds(log, data),
         query: query ? query.slice(0, MAX_QUERY) : null,

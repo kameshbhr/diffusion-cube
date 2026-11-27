@@ -33,7 +33,6 @@ export interface PlaybookContent {
   overview: PlaybookOverview;
   roles: PlaybookRole[];
   sequence: PlaybookSequence;
-  source_doc: string;
 }
 
 export interface Snapshot {
@@ -97,15 +96,7 @@ export type PatchOp =
   /** after: null = at the start, missing = at the end, else after that step. */
   | { op: 'phase.add'; after?: number | null; value: PlaybookPhase }
   | { op: 'phase.remove'; index: number }
-  | { op: 'rules.set'; value: PlaybookRule[] }
-  | { op: 'source.replace_section'; heading: string; text: string }
-  | { op: 'source.append_to_section'; heading: string; text: string }
-  | { op: 'source.add_section'; after_heading: string | null; heading: string; text: string }
-  | { op: 'source.replace'; find: string; replace: string }
-  | { op: 'source.insert_after'; find: string; text: string }
-  | { op: 'source.append'; text: string }
-  /** The whole source document. From the Source document editor only; never proposed by Cube. */
-  | { op: 'source.set'; value: string };
+  | { op: 'rules.set'; value: PlaybookRule[] };
 
 export type OpResult = { ok: true } | { ok: false; error: string };
 
@@ -239,112 +230,6 @@ function checkIndex(list: unknown[], index: number, expect: string, field: strin
     fail(`Item ${index + 1} in "${field}" has changed since this change was proposed.`);
 }
 
-// ---------- source document sections ----------
-
-interface Heading {
-  line: number;
-  level: number;
-  text: string;
-}
-
-function headings(lines: string[]): Heading[] {
-  const out: Heading[] = [];
-  let fenced = false;
-  lines.forEach((l, i) => {
-    if (/^\s*(```|~~~)/.test(l)) fenced = !fenced;
-    const m = !fenced && l.match(/^(#{1,6})\s+(.*\S)\s*$/);
-    if (m) out.push({ line: i, level: m[1].length, text: l.trim() });
-  });
-  return out;
-}
-
-/** The one heading whose line matches exactly (whitespace-trimmed). */
-function findHeading(lines: string[], heading: string): { h: Heading; end: number } {
-  const all = headings(lines);
-  const want = heading.trim();
-  const hits = all.filter((h) => h.text === want);
-  if (!hits.length) fail(`The heading "${want}" isn't in the playbook's detailed guidance.`);
-  if (hits.length > 1) fail(`The heading "${want}" appears ${hits.length} times; make it unique first.`);
-  const h = hits[0];
-  const next = all.find((x) => x.line > h.line && x.level <= h.level);
-  return { h, end: next ? next.line : lines.length };
-}
-
-function countOccurrences(hay: string, needle: string): number {
-  if (!needle) return 0;
-  let n = 0;
-  for (let i = hay.indexOf(needle); i !== -1; i = hay.indexOf(needle, i + needle.length)) n++;
-  return n;
-}
-
-const trimBlock = (t: string) => t.replace(/^\n+|\s+$/g, '');
-
-/** Every text field a source op uses must be a string (a model may omit one). */
-type SourceOp = Exclude<Extract<PatchOp, { op: `source.${string}` }>, { op: 'source.set' }>;
-
-function checkSourceOp(op: SourceOp): void {
-  const r = op as unknown as Record<string, unknown>;
-  const need: Record<string, string[]> = {
-    'source.replace_section': ['heading', 'text'],
-    'source.append_to_section': ['heading', 'text'],
-    'source.add_section': ['heading', 'text'],
-    'source.replace': ['find', 'replace'],
-    'source.insert_after': ['find', 'text'],
-    'source.append': ['text'],
-  };
-  for (const k of need[op.op] ?? []) if (!isStr(r[k])) fail(`This change is missing its "${k}".`);
-  if (op.op === 'source.add_section' && r.after_heading !== null && !isStr(r.after_heading))
-    fail('This change is missing where to put the new section.');
-}
-
-function applySource(doc: string, op: SourceOp): string {
-  checkSourceOp(op);
-  const lines = doc.split('\n');
-  switch (op.op) {
-    case 'source.replace_section': {
-      const { h, end } = findHeading(lines, op.heading);
-      const body = trimBlock(op.text);
-      if (headings(body.split('\n')).some((x) => x.text === h.text))
-        fail('The new text repeats the section heading; give only the text under the heading.');
-      // Blank lines are tidied only where the new text joins the document.
-      const head = lines.slice(0, h.line + 1).join('\n');
-      const tail = lines.slice(end).join('\n').replace(/^\n+/, '');
-      return `${head}\n\n${body}\n${tail ? `\n${tail}` : ''}`;
-    }
-    case 'source.append_to_section': {
-      const { end } = findHeading(lines, op.heading);
-      const before = lines.slice(0, end).join('\n').replace(/\s+$/, '');
-      const after = lines.slice(end).join('\n');
-      return `${before}\n\n${trimBlock(op.text)}\n${after ? `\n${after}` : ''}`;
-    }
-    case 'source.add_section': {
-      if (!/^#{1,6}\s+\S/.test(op.heading.trim())) fail('The new heading must start with # characters, e.g. "## Funding".');
-      if (headings(lines).some((h) => h.text === op.heading.trim())) fail(`The heading "${op.heading.trim()}" already exists.`);
-      const block = `${op.heading.trim()}\n\n${trimBlock(op.text)}\n`;
-      if (op.after_heading === null) return `${doc.replace(/\s+$/, '')}\n\n${block}`;
-      const { end } = findHeading(lines, op.after_heading);
-      const before = lines.slice(0, end).join('\n').replace(/\s+$/, '');
-      const after = lines.slice(end).join('\n');
-      return `${before}\n\n${block}${after ? `\n${after}` : ''}`;
-    }
-    case 'source.replace': {
-      const n = countOccurrences(doc, op.find);
-      if (!op.find) fail('The text to find is empty.');
-      if (n === 0) fail("The text to replace isn't in the playbook's detailed guidance (it may have changed).");
-      if (n > 1) fail(`The text to replace appears ${n} times; it must appear exactly once.`);
-      return doc.replace(op.find, () => op.replace);
-    }
-    case 'source.insert_after': {
-      const n = countOccurrences(doc, op.find);
-      if (!op.find) fail('The text to find is empty.');
-      if (n === 0) fail("The text to insert after isn't in the playbook's detailed guidance (it may have changed).");
-      if (n > 1) fail(`The text to insert after appears ${n} times; it must appear exactly once.`);
-      return doc.replace(op.find, () => `${op.find}${op.text}`);
-    }
-    case 'source.append':
-      return `${doc.replace(/\s+$/, '')}\n\n${trimBlock(op.text)}\n`;
-  }
-}
 
 // ---------------------------------------------------------------------------
 // applyOps
@@ -486,18 +371,6 @@ function applyOne(s: Snapshot, op: PatchOp, removedInPatch: Set<string>): void {
       s.playbook.sequence.rules = op.value.map((r) => ({ rule: r.rule.trim(), why: (r.why ?? '').trim() }));
       return;
     }
-    case 'source.replace_section':
-    case 'source.append_to_section':
-    case 'source.add_section':
-    case 'source.replace':
-    case 'source.insert_after':
-    case 'source.append':
-      s.playbook.source_doc = applySource(s.playbook.source_doc, op);
-      return;
-    case 'source.set':
-      if (!isStr(op.value)) fail('The detailed guidance must be text.');
-      s.playbook.source_doc = op.value;
-      return;
     default:
       fail(`Unknown change "${(op as { op: string }).op}".`);
   }
@@ -537,27 +410,10 @@ export function checkGuards(s: Snapshot): string[] {
   if (!credits.includes('CC BY 4.0') || !credits.includes('EkStep'))
     problems.push('The credits must keep the CC BY 4.0 licence and the attribution to EkStep.');
   const all = JSON.stringify(s.playbook) + JSON.stringify(s.jobs);
-  if (ONLY_FOR_AUTHOR.test(all) || ONLY_FOR_AUTHOR.test(s.playbook.source_doc))
+  if (ONLY_FOR_AUTHOR.test(all))
     problems.push('Content marked "Only for Author" can\'t be published in the playbook.');
   if (!s.playbook.title.trim()) problems.push('The playbook needs a title.');
   return problems;
-}
-
-/** The source document is loaded whole into Cube's prompt; this is its budget, in tokens. */
-export const SOURCE_TOKEN_CAP = 100_000;
-/** A rough token count (about 4 characters per token). */
-export const sourceTokens = (doc: string) => Math.ceil(doc.length / 4);
-
-/**
- * Blocks a change that makes the source document longer than its budget. A
- * document already over it can still be shortened.
- */
-export function checkSize(base: Snapshot, next: Snapshot): string[] {
-  const after = sourceTokens(next.playbook.source_doc);
-  if (after <= SOURCE_TOKEN_CAP || after <= sourceTokens(base.playbook.source_doc)) return [];
-  return [
-    `This would make the playbook's detailed guidance about ${after.toLocaleString("en")} tokens, over the ${SOURCE_TOKEN_CAP.toLocaleString("en")} Cube can read whole. Shorten it first, or leave some of these changes out.`,
-  ];
 }
 
 /**
@@ -566,13 +422,10 @@ export function checkSize(base: Snapshot, next: Snapshot): string[] {
  */
 export function checkWarnings(base: Snapshot, next: Snapshot): string[] {
   const out: string[] = [];
-  const untracked = next.jobs.filter(
-    (j) => !(j.body.tracked_by ?? []).includes('PMU') && (base.jobs.find((b) => b.job_code === j.job_code)?.body.tracked_by ?? ['PMU']).includes('PMU')
+  const unowned = next.jobs.filter(
+    (j) => !(j.body.owners ?? []).length && (base.jobs.find((b) => b.job_code === j.job_code)?.body.owners ?? ['x']).length
   );
-  if (untracked.length)
-    out.push(
-      `PMU no longer tracks: ${untracked.map((j) => j.name).join(', ')}. ${untracked.length === 1 ? 'It' : 'They'} will disappear from the PMU’s Jobs screen.`
-    );
+  if (unowned.length) out.push(`No owner named any more for: ${unowned.map((j) => j.name).join(', ')}.`);
   return out;
 }
 
@@ -591,7 +444,7 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 /** Only what changed: playbook keys, full rows of changed or new jobs, removed codes. */
 export function toSave(base: Snapshot, next: Snapshot): SaveArgs {
   const playbook: Partial<PlaybookContent> = {};
-  for (const k of ['title', 'description', 'overview', 'roles', 'sequence', 'source_doc'] as const) {
+  for (const k of ['title', 'description', 'overview', 'roles', 'sequence'] as const) {
     if (!same(base.playbook[k], next.playbook[k])) (playbook as Record<string, unknown>)[k] = next.playbook[k];
   }
   const before = new Map(base.jobs.map((j) => [j.job_code, j]));

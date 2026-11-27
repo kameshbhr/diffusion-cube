@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { contextEntries, formatWhen, type ConversationSummary } from '@/lib/companion-v2/conversations';
 
-// The contributor's list of adopter conversations (every adopter is "User").
+// The curator's list of this use case's conversations (everyone is "User").
 export default function ConversationList({
   slug,
   conversations,
@@ -26,8 +26,8 @@ export default function ConversationList({
         </p>
       ) : (
         <p className="max-w-[62ch] text-sm leading-relaxed text-pb-muted">
-          Conversations people have had with Cube about this playbook, newest first. Everyone is shown as “User”: names and emails
-          are never shown. Your own conversations as a contributor aren’t listed.
+          Conversations people have had with Cube about this use case in the app, newest first, curators’ included. Everyone
+          is shown as “User”: names and emails are never shown.
         </p>
       )}
 

@@ -11,10 +11,10 @@ import { CONVERSATIONS_CHANGED, notifyConversationsChanged } from '@/lib/compani
 interface Item {
   id: string;
   slug: string;
-  playbookTitle: string;
+  useCaseName: string;
   label: string;
   updatedAt: string;
-  latestForPlaybook: boolean;
+  latestForUseCase: boolean;
 }
 
 const LIMIT = 30;
@@ -27,57 +27,48 @@ function label(text: string | undefined): string {
 }
 
 // Cube 2.0: the signed-in user's own companion conversations in the sidebar,
-// newest first, like Cube 1.0's Recent Explorations. RLS returns only the
-// user's own rows. Deleting removes the conversation and its messages for
-// good; the user's job states belong to them, not the conversation, so stay.
+// newest first, like Cube 1.0's Recent Explorations, through
+// my_companion_conversations() (only the user's own, in use cases they can
+// still read). Deleting removes the conversation and its messages for good.
 export default function RecentConversations({ onNavigate }: { onNavigate?: () => void } = {}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
   const [supabase] = useState(() => createClient());
   const [items, setItems] = useState<Item[]>([]);
-  const [manyPlaybooks, setManyPlaybooks] = useState(false);
+  const [manyUseCases, setManyUseCases] = useState(false);
   const { confirm, dialog } = useConfirm();
 
   const fetchItems = useCallback(async () => {
-    // One request: each conversation with its playbook and only its first
-    // user message (PostgREST embeds, limited per conversation).
-    const { data, error } = await supabase
-      .from('companion_conversations')
-      .select('id, updated_at, playbook:playbooks(id, slug, title), first:companion_messages(content)')
-      .eq('first.role', 'user')
-      .order('updated_at', { ascending: false })
-      .order('created_at', { referencedTable: 'first', ascending: true })
-      .limit(1, { referencedTable: 'first' })
-      .limit(LIMIT);
+    const { data, error } = await supabase.rpc('my_companion_conversations', { p_limit: LIMIT });
     if (error) {
       console.error('[recent conversations] could not load:', error);
       return;
     }
     type Row = {
-      id: string;
+      conversation_id: string;
       updated_at: string;
-      playbook: { id: string; slug: string; title: string } | { id: string; slug: string; title: string }[] | null;
-      first: { content: string }[] | null;
+      use_case_id: string;
+      use_case_slug: string;
+      use_case_name: string;
+      first_message: string | null;
     };
-    const seenPlaybook = new Set<string>();
+    const seenUseCase = new Set<string>();
     const next: Item[] = [];
-    for (const c of (data ?? []) as unknown as Row[]) {
-      const pb = Array.isArray(c.playbook) ? c.playbook[0] : c.playbook;
-      if (!pb) continue; // playbook no longer visible
-      const latest = !seenPlaybook.has(pb.id);
-      seenPlaybook.add(pb.id);
+    for (const c of (data ?? []) as Row[]) {
+      const latest = !seenUseCase.has(c.use_case_id);
+      seenUseCase.add(c.use_case_id);
       next.push({
-        id: c.id,
-        slug: pb.slug,
-        playbookTitle: pb.title,
-        label: label(c.first?.[0]?.content),
+        id: c.conversation_id,
+        slug: c.use_case_slug,
+        useCaseName: c.use_case_name,
+        label: label(c.first_message ?? undefined),
         updatedAt: c.updated_at,
-        latestForPlaybook: latest,
+        latestForUseCase: latest,
       });
     }
     setItems(next);
-    setManyPlaybooks(seenPlaybook.size > 1);
+    setManyUseCases(seenUseCase.size > 1);
   }, [supabase]);
 
   useEffect(() => {
@@ -96,7 +87,7 @@ export default function RecentConversations({ onNavigate }: { onNavigate?: () =>
 
   const currentC = searchParams.get('c');
   const isActive = (item: Item) =>
-    pathname === `/companion/${item.slug}` && (currentC ? currentC === item.id : item.latestForPlaybook);
+    pathname === `/companion/${item.slug}` && (currentC ? currentC === item.id : item.latestForUseCase);
 
   async function remove(e: React.MouseEvent, item: Item) {
     e.preventDefault();
@@ -105,8 +96,7 @@ export default function RecentConversations({ onNavigate }: { onNavigate?: () =>
       title: 'Delete this conversation?',
       message: (
         <>
-          &ldquo;{item.label}&rdquo; and all its messages will be permanently deleted. Your job markers stay. This can&apos;t be
-          undone.
+          &ldquo;{item.label}&rdquo; and all its messages will be permanently deleted. This can&apos;t be undone.
         </>
       ),
       confirmLabel: 'Delete',
@@ -152,10 +142,10 @@ export default function RecentConversations({ onNavigate }: { onNavigate?: () =>
                 className={`block min-w-0 flex-1 px-3 py-1.5 text-xs transition ${
                   active ? 'font-medium text-navy' : 'text-ink-soft group-hover/item:text-navy'
                 }`}
-                title={manyPlaybooks ? `${item.label} · ${item.playbookTitle}` : item.label}
+                title={manyUseCases ? `${item.label} · ${item.useCaseName}` : item.label}
               >
                 <span className="block truncate">{item.label}</span>
-                {manyPlaybooks && <span className="block truncate text-[10px] text-ink-soft/70">{item.playbookTitle}</span>}
+                {manyUseCases && <span className="block truncate text-[10px] text-ink-soft/70">{item.useCaseName}</span>}
               </Link>
               <button
                 type="button"

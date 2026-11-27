@@ -1,7 +1,6 @@
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isAdmin } from '@/lib/roles';
 import { embedTexts, toPgVector } from '@/lib/embeddings';
+import { documentCaller } from '@/lib/document-access';
 
 // Cube raw layer: embeds the next few passages that have no embedding
 // (documents' and notes'). The Documents page calls this repeatedly and shows
@@ -26,11 +25,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!(await isAdmin(supabase, user?.email))) {
+  // Admins and anyone who can add documents somewhere. Embedding only fills
+  // in vectors for text that is already saved, so it runs for every use case.
+  if (!(await documentCaller())) {
     return Response.json({ error: 'Not authorized.' }, { status: 403 });
   }
   const body = await req.json().catch(() => ({}));
@@ -42,7 +39,7 @@ export async function POST(req: Request) {
   if (body?.add_note_passages === true) {
     const { error } = await admin.rpc('cube_add_missing_note_passages');
     if (error) {
-      console.error('[admin/documents/embed] adding note passages failed:', error.message);
+      console.error('[documents/embed] adding note passages failed:', error.message);
       return Response.json({ error: "Could not add the notes' passages." }, { status: 500 });
     }
   }
@@ -57,7 +54,7 @@ export async function POST(req: Request) {
   if (skip.length > 0) query = query.not('id', 'in', `(${skip.join(',')})`);
   const { data: rows, error } = await query;
   if (error) {
-    console.error('[admin/documents/embed] load failed:', error.message);
+    console.error('[documents/embed] load failed:', error.message);
     return Response.json({ error: 'Could not load passages.' }, { status: 500 });
   }
 
@@ -98,7 +95,7 @@ export async function POST(req: Request) {
         }
       }
     } catch (err) {
-      console.error('[admin/documents/embed] update failed:', (err as Error).message);
+      console.error('[documents/embed] update failed:', (err as Error).message);
       return Response.json({ error: 'Could not store embeddings.' }, { status: 500 });
     }
     // Nothing in the batch could be embedded: the embed function is most

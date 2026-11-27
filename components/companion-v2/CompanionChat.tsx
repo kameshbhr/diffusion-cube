@@ -6,15 +6,14 @@ import { usePathname, useRouter } from 'next/navigation';
 import WikiMarkdown from '@/components/WikiMarkdown';
 import VoiceInputButton from '@/components/VoiceInputButton';
 import { NEW_CONVERSATION, useCompanionChat } from '@/lib/companion-v2/use-companion-chat';
-import StateMarker from './StateMarker';
 import AssetLink from './AssetLink';
+import NoteOffer from './NoteOffer';
 import { shortWhen } from '@/lib/companion-v2/jobs';
 
 export interface ChatJob {
   code: string;
   name: string;
   when: string;
-  tag: 'Owns' | 'Tracks' | null;
 }
 
 export interface ChatAsset {
@@ -27,8 +26,10 @@ export interface ChatAsset {
 
 interface Props {
   slug: string;
-  playbookId: string;
-  memberId: string;
+  useCaseId: string;
+  /** Write access: Cube may offer to save a note to the Cube. */
+  canWrite: boolean;
+  hasPlaybook: boolean;
   jobs: ChatJob[];
   assets: ChatAsset[];
   /** From "Ask Cube about this job" (?job=CODE). */
@@ -37,14 +38,20 @@ interface Props {
   conversationParam?: string | null;
 }
 
-const CHIPS = [
+const PLAYBOOK_CHIPS = [
   'Where do I start?',
-  'What do I own, and what do I only track?',
+  'Who does what at each step?',
   'How long will this take and what will it cost?',
   'What usually goes wrong, and how do I avoid it?',
 ];
+const NOTES_CHIPS = [
+  'What have teams learned so far?',
+  'What has worked well?',
+  'What usually goes wrong?',
+  'Where do I start?',
+];
 
-export default function CompanionChat({ slug, playbookId, memberId, jobs, assets, initialJob, conversationParam }: Props) {
+export default function CompanionChat({ slug, useCaseId, canWrite, hasPlaybook, jobs, assets, initialJob, conversationParam }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const jobByCode = useMemo(() => new Map(jobs.map((j) => [j.code, j])), [jobs]);
@@ -53,8 +60,7 @@ export default function CompanionChat({ slug, playbookId, memberId, jobs, assets
   const jobCodes = useMemo(() => jobs.map((j) => j.code), [jobs]);
   const assetIds = useMemo(() => assets.map((a) => a.id), [assets]);
   const chat = useCompanionChat({
-    playbookId,
-    memberId,
+    useCaseId,
     jobCodes,
     assetIds,
     requestedConversationId: conversationParam,
@@ -94,7 +100,7 @@ export default function CompanionChat({ slug, playbookId, memberId, jobs, assets
     }
   }, [ready, busy, conversationId, initialJob, jobByCode, kickoff, send, router, pathname]);
 
-  // A new conversation (?c=new, from the playbook list): once it exists, put
+  // A new conversation (?c=new, from the use case list): once it exists, put
   // its id in the address bar, so a reload reopens it instead of starting
   // another. replaceState keeps this page as it is (no refetch).
   useEffect(() => {
@@ -135,7 +141,7 @@ export default function CompanionChat({ slug, playbookId, memberId, jobs, assets
   // have none.)
   const last = chat.messages[chat.messages.length - 1];
   const suggested = last?.role === 'assistant' && !last.pending ? last.ui?.suggestions ?? [] : [];
-  const chips = suggested.length ? suggested : hasUserMessage ? [] : CHIPS;
+  const chips = suggested.length ? suggested : hasUserMessage ? [] : hasPlaybook ? PLAYBOOK_CHIPS : NOTES_CHIPS;
   const showChips = !chat.loading && !chat.busy && chat.error?.kind !== 'limit' && chips.length > 0;
 
   return (
@@ -173,7 +179,6 @@ export default function CompanionChat({ slug, playbookId, memberId, jobs, assets
                   {[...new Set([...(m.ui.openJob ? [m.ui.openJob] : []), ...m.ui.focusJobs])].map((code) => {
                     const job = jobByCode.get(code);
                     if (!job) return null;
-                    const state = chat.jobStates[code];
                     return (
                       <Link
                         key={code}
@@ -184,15 +189,15 @@ export default function CompanionChat({ slug, playbookId, memberId, jobs, assets
                           <span className="text-sm font-medium text-pb-ink">{job.name}</span>
                         </span>
                         <span className="mt-1 block text-xs leading-snug text-pb-muted">{shortWhen(job.when)}</span>
-                        {state && (
-                          <span className="mt-1.5 block">
-                            <StateMarker state={state} />
-                          </span>
-                        )}
                       </Link>
                     );
                   })}
                 </div>
+              )}
+
+              {/* Only on the latest reply: an offer is about what was just said. */}
+              {canWrite && m.ui?.noteOffer && m === last && !m.pending && (
+                <NoteOffer key={m.id} useCaseId={useCaseId} text={m.ui.noteOffer} />
               )}
 
               {!!m.ui?.showAssets.length && (
@@ -302,7 +307,7 @@ export default function CompanionChat({ slug, playbookId, memberId, jobs, assets
           </button>
         </form>
         <p className="mt-2 text-center text-[11px] text-pb-muted">
-          Cube answers from this playbook only, and can be wrong.
+          Cube answers only from this use case’s {hasPlaybook ? 'playbook, notes and documents' : 'notes and documents'}, and can be wrong.
         </p>
       </div>
     </div>

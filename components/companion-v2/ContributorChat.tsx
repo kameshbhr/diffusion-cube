@@ -12,9 +12,9 @@ import { useContributorChat, type ContributorMessage, type StoredContributorUi }
 import { approxTokens, chunkFiles, MAX_UPLOAD_CHARS, type UploadedText } from '@/lib/companion-v2/playbook-patch';
 
 interface Props {
+  useCaseId: string;
   playbookId: string;
-  memberId: string;
-  /** ?c= : a conversation id, "new" (opened from the playbook list), or null for the latest. */
+  /** ?c= : a conversation id, "new" (opened from the use case list), or null for the latest. */
   conversationParam: string | null;
   base: Snapshot;
   /** updated_at exactly as loaded; a save fails as stale if it has moved. */
@@ -34,12 +34,13 @@ interface Attachment {
 
 let attachSeq = 0;
 
-// The contributor's Converse tab: ask about the playbook, ask for a change, or
-// add files with "+"; Cube proposes changes, shown as a diff under its reply.
-// Nothing changes until Apply, and this conversation is never saved.
-export default function ContributorChat({ playbookId, memberId, conversationParam, base, updatedAt }: Props) {
+// The curator's Converse tab: ask about the playbook, ask for a change, or
+// add files with "+"; Cube proposes changes to the playbook, shown as a diff
+// under its reply. Nothing changes until Apply. The conversation is saved; the
+// proposed changes are not.
+export default function ContributorChat({ useCaseId, playbookId, conversationParam, base, updatedAt }: Props) {
   const router = useRouter();
-  const chat = useContributorChat({ playbookId, memberId, base, updatedAt, requestedConversationId: conversationParam });
+  const chat = useContributorChat({ useCaseId, base, updatedAt, requestedConversationId: conversationParam });
   const pathname = usePathname();
 
   // Once the conversation on screen has an id (opened, or saved for the first

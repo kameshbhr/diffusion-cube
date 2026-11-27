@@ -3,10 +3,16 @@
 // a <ui_action> block that the client validates and persists; the model and
 // this handler never write conversation data.
 //
+// A conversation is about one use case (docs/design/cube-usecase-plan.md).
+// Anyone who can read it converses ("adopter" role in the request); people
+// with curate access on a use case that has a playbook use the curator chat
+// ("contributor" role), which proposes playbook edits.
+//
 // Called from app/api/chat/route.ts after its approval check (hasAnyRole).
 
 import Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { startTextStream } from '@/lib/anthropic-stream';
 import { serializePlaybook } from './playbook-json.mjs';
 import { MAX_FILES_PER_PART } from './playbook-patch';
@@ -16,19 +22,27 @@ import {
   kickoffMessage,
   loadAdopterInstructions,
   loadContributorInstructions,
+  NO_PLAYBOOK_TEXT,
   renderAssets,
   renderPlaybook,
+  renderSources,
+  renderUseCase,
   renderUserFacts,
+  type SourceHit,
+  type UseCaseFacts,
 } from './prompt';
-import type { AssetRow, CompanionContext, JobRow, JobStateRow, PlaybookRow } from './types';
+import { searchUseCase } from './search';
+import { dailyCap } from './usage';
+import { sortJobs } from './jobs';
+import type { AssetRow, CompanionContext, JobRow, PlaybookRow } from './types';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const MODEL = 'claude-sonnet-4-6';
 const ADOPTER_MAX_TOKENS = 2048;
 // Fits inside the 300 s function limit (Vercel Hobby). Raise with maxDuration on Pro.
 const CONTRIBUTOR_MAX_TOKENS = 8000;
-// Contributor chats are never stored, so the client sends the history. These
-// bound what one request may carry.
+// The curator chat's history comes from the client. These bound what one
+// request may carry.
 const CONTRIB_MAX_MESSAGES = 40;
 const CONTRIB_MAX_MESSAGE_CHARS = 60_000;
 const CONTRIB_MAX_HISTORY_CHARS = 300_000;
@@ -38,12 +52,8 @@ const CONTRIB_MAX_FILE_CHARS = 130_000;
 const MAX_HISTORY = 40;
 const MAX_USER_CHARS = 8000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function dailyCap(role: 'adopter' | 'contributor'): number {
-  const raw = role === 'adopter' ? process.env.COMPANION_DAILY_MESSAGE_CAP : process.env.COMPANION_DAILY_CONTRIBUTOR_CAP;
-  const n = Number(raw);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : role === 'adopter' ? 60 : 40;
-}
+const PLAYBOOK_COLUMNS = 'id, slug, title, description, overview, roles, sequence, updated_at';
+const JOB_COLUMNS = 'job_code, name, position, stages, work_area, job_type, body';
 
 const json = (status: number, body: Record<string, unknown>) => Response.json(body, { status });
 
@@ -62,36 +72,34 @@ export async function handleCompanionV2(body: Record<string, unknown>, supabase:
   if (!user) return json(401, { error: 'Please sign in.' });
 
   const role = body.role === 'contributor' ? 'contributor' : body.role === 'adopter' ? 'adopter' : null;
-  const playbookId = typeof body.playbookId === 'string' && UUID.test(body.playbookId) ? body.playbookId : null;
-  if (!role || !playbookId) return json(400, { error: 'Invalid request.' });
+  const useCaseId = typeof body.useCaseId === 'string' && UUID.test(body.useCaseId) ? body.useCaseId : null;
+  if (!role || !useCaseId) return json(400, { error: 'Invalid request.' });
 
-  // Membership (RLS: own row only) decides what the caller may do here.
-  const { data: member } = await supabase
-    .from('playbook_members')
-    .select('id, member_role, project_role')
-    .eq('playbook_id', playbookId)
-    .eq('user_id', user.id)
-    .maybeSingle();
-  if (!member) return json(403, { error: 'Open the playbook first.' });
+  // The caller's own access, decided in the database from the allowlist.
+  const { data: access, error: accessError } = await supabase.rpc('cube_use_case_access', { p_use_case_id: useCaseId });
+  if (accessError) {
+    console.error('[companion-v2] access check failed:', accessError);
+    return json(500, { error: 'Could not check your access.' });
+  }
+  if (!access) return json(403, { error: "You don't have access to this use case. Please contact the admin." });
 
   if (role === 'contributor') {
-    if (member.member_role !== 'contributor') return json(403, { error: 'Only contributors can update the playbook.' });
-    return handleContributor(body, supabase, playbookId);
+    if (access !== 'curate') return json(403, { error: 'Only curators can update the playbook.' });
+    return handleContributor(body, supabase, useCaseId);
   }
-
-  return handleAdopter(body, supabase, playbookId, member as { id: string; project_role: string });
+  return handleAdopter(body, supabase, useCaseId, access);
 }
 
 /** Keeps a file name safe inside an attribute: no quotes, brackets or line breaks. */
 const safeName = (n: string) => n.replace(/["<>\r\n]/g, ' ').trim().slice(0, 200) || 'file';
 
 /**
- * The contributor chat (their Converse tab). Nothing is stored: the history comes from the client and
+ * The curator chat (their Converse tab). The history comes from the client and
  * uploaded file text is placed in the last user turn only (never in the
  * cached system prompt, never logged). The reply ends with <playbook_patch>,
- * which the client turns into a diff for the contributor to review.
+ * which the client turns into a diff for the curator to review.
  */
-async function handleContributor(body: Record<string, unknown>, supabase: SupabaseClient, playbookId: string): Promise<Response> {
+async function handleContributor(body: Record<string, unknown>, supabase: SupabaseClient, useCaseId: string): Promise<Response> {
   const bad = () => json(400, { error: 'Invalid request.' });
 
   const raw = Array.isArray(body.messages) ? body.messages : null;
@@ -135,24 +143,22 @@ async function handleContributor(body: Record<string, unknown>, supabase: Supaba
     last.content = `${last.content}${partLine}\n\n${blocks}`;
   }
 
-  const [pbRes, jobsRes] = await Promise.all([
-    supabase
-      .from('playbooks')
-      .select('id, slug, title, description, overview, roles, sequence, source_doc, updated_at')
-      .eq('id', playbookId)
-      .maybeSingle(),
-    supabase
-      .from('playbook_jobs')
-      .select('job_code, name, position, stages, work_area, job_type, body')
-      .eq('playbook_id', playbookId),
-  ]);
-  const failed = [pbRes, jobsRes].find((r) => r.error);
-  if (failed) {
-    console.error('[companion-v2 contributor] load failed:', failed.error);
+  const { data: pb, error: pbError } = await supabase
+    .from('playbooks')
+    .select(PLAYBOOK_COLUMNS)
+    .eq('use_case_id', useCaseId)
+    .maybeSingle();
+  if (pbError) {
+    console.error('[companion-v2 contributor] load failed:', pbError);
     return json(500, { error: 'Could not load the playbook.' });
   }
-  const playbook = pbRes.data as PlaybookRow | null;
-  if (!playbook) return json(404, { error: 'Unknown playbook.' });
+  const playbook = pb as PlaybookRow | null;
+  if (!playbook) return json(404, { error: 'This use case has no playbook.' });
+  const { data: jobRows, error: jobsError } = await supabase.from('playbook_jobs').select(JOB_COLUMNS).eq('playbook_id', playbook.id);
+  if (jobsError) {
+    console.error('[companion-v2 contributor] load failed:', jobsError);
+    return json(500, { error: 'Could not load the playbook.' });
+  }
 
   const { data: allowed, error: capError } = await supabase.rpc('bump_companion_usage', {
     p_role: 'contributor',
@@ -178,9 +184,8 @@ async function handleContributor(body: Record<string, unknown>, supabase: Supaba
       overview: playbook.overview,
       roles: playbook.roles,
       sequence: playbook.sequence,
-      jobs: jobsRes.data ?? [],
+      jobs: jobRows ?? [],
     }),
-    sourceDoc: playbook.source_doc,
   });
 
   try {
@@ -206,11 +211,28 @@ async function handleContributor(body: Record<string, unknown>, supabase: Supaba
   }
 }
 
+async function loadUseCaseFacts(useCaseId: string): Promise<UseCaseFacts | null> {
+  const admin = createAdminClient();
+  const [ucRes, jRes] = await Promise.all([
+    admin.from('use_cases').select('name, description, objective, problem, users, sector').eq('id', useCaseId).maybeSingle(),
+    admin
+      .from('journeys')
+      .select('name, organisation, geography, scale_achieved, impact_achieved')
+      .eq('use_case_id', useCaseId)
+      .order('name'),
+  ]);
+  if (ucRes.error || jRes.error || !ucRes.data) {
+    console.error('[companion-v2] use case load failed:', ucRes.error ?? jRes.error ?? 'not found');
+    return null;
+  }
+  return { ...(ucRes.data as Omit<UseCaseFacts, 'journeys'>), journeys: (jRes.data ?? []) as UseCaseFacts['journeys'] };
+}
+
 async function handleAdopter(
   body: Record<string, unknown>,
   supabase: SupabaseClient,
-  playbookId: string,
-  member: { id: string; project_role: string }
+  useCaseId: string,
+  access: 'read' | 'write' | 'curate'
 ): Promise<Response> {
   const conversationId =
     typeof body.conversationId === 'string' && UUID.test(body.conversationId) ? body.conversationId : null;
@@ -225,48 +247,41 @@ async function handleAdopter(
   }
   const focusJob = typeof body.focusJob === 'string' ? body.focusJob : null;
 
-  const [pbRes, jobsRes, assetsRes, convRes, statesRes, countRes] = await Promise.all([
-    supabase
-      .from('playbooks')
-      .select('id, slug, title, description, overview, roles, sequence, source_doc, updated_at')
-      .eq('id', playbookId)
-      .maybeSingle(),
-    supabase
-      .from('playbook_jobs')
-      .select('job_code, name, position, stages, work_area, job_type, body')
-      .eq('playbook_id', playbookId),
-    supabase
-      .from('assets')
-      .select('id, title, kind, url, storage_path, description, job_codes')
-      .eq('playbook_id', playbookId),
-    supabase
-      .from('companion_conversations')
-      .select('id, context')
-      .eq('id', conversationId)
-      .eq('member_id', member.id)
-      .maybeSingle(),
-    supabase.from('member_job_states').select('job_code, state, note, set_by').eq('member_id', member.id),
+  const [pbRes, convRes, countRes, facts] = await Promise.all([
+    supabase.from('playbooks').select(PLAYBOOK_COLUMNS).eq('use_case_id', useCaseId).maybeSingle(),
+    supabase.from('companion_conversations').select('id, context').eq('id', conversationId).eq('use_case_id', useCaseId).maybeSingle(),
     supabase
       .from('companion_messages')
       .select('role, content', { count: 'exact' })
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: false })
       .limit(MAX_HISTORY),
+    loadUseCaseFacts(useCaseId),
   ]);
-
-  const failed = [pbRes, jobsRes, assetsRes, convRes, statesRes, countRes].find((r) => r.error);
-  if (failed) {
-    console.error('[companion-v2] load failed:', failed.error);
-    return json(500, { error: 'Could not load the playbook.' });
+  const failed = [pbRes, convRes, countRes].find((r) => r.error);
+  if (failed || !facts) {
+    console.error('[companion-v2] load failed:', failed?.error ?? 'use case');
+    return json(500, { error: 'Could not load the use case.' });
   }
   const playbook = pbRes.data as PlaybookRow | null;
   const conversation = convRes.data as { id: string; context: CompanionContext } | null;
-  if (!playbook) return json(404, { error: 'Unknown playbook.' });
   if (!conversation) return json(404, { error: 'Unknown conversation.' });
 
-  const jobs = ((jobsRes.data ?? []) as JobRow[]).sort(
-    (a, b) => (a.position ?? 1e9) - (b.position ?? 1e9) || a.job_code.localeCompare(b.job_code, 'en', { numeric: true })
-  );
+  let jobs: JobRow[] = [];
+  let assets: AssetRow[] = [];
+  if (playbook) {
+    const [jobsRes, assetsRes] = await Promise.all([
+      supabase.from('playbook_jobs').select(JOB_COLUMNS).eq('playbook_id', playbook.id),
+      supabase.from('assets').select('id, title, kind, url, storage_path, description, job_codes').eq('playbook_id', playbook.id),
+    ]);
+    if (jobsRes.error || assetsRes.error) {
+      console.error('[companion-v2] load failed:', jobsRes.error ?? assetsRes.error);
+      return json(500, { error: 'Could not load the playbook.' });
+    }
+    jobs = sortJobs((jobsRes.data ?? []) as JobRow[]);
+    assets = (assetsRes.data ?? []) as AssetRow[];
+  }
+
   const context = conversation.context ?? {};
   const total = countRes.count ?? 0;
   const history = ((countRes.data ?? []) as ChatMessage[]).reverse();
@@ -302,18 +317,23 @@ async function handleAdopter(
     });
   }
 
+  // Search the use case's notes and documents for this message, with the
+  // person's previous message for context (follow-ups are often short).
+  let sources: SourceHit[] | null = null;
+  if (!kickoff) {
+    const previous = [...history].reverse().find((m) => m.role === 'user')?.content ?? '';
+    sources = await searchUseCase(createAdminClient(), useCaseId, `${previous.slice(0, 300)}\n${userText}`, {
+      showAuthors: access === 'curate',
+    });
+  }
+
   const system = buildSystemBlocks({
     instructions: await loadAdopterInstructions(),
-    playbookText: renderPlaybook(playbook, jobs),
-    sourceDoc: playbook.source_doc,
-    assetsText: renderAssets((assetsRes.data ?? []) as AssetRow[], jobs),
-    userText: renderUserFacts({
-      projectRole: member.project_role,
-      context,
-      jobStates: (statesRes.data ?? []) as JobStateRow[],
-      jobs,
-      focusJob,
-    }),
+    playbookText: playbook ? renderPlaybook(playbook, jobs) : NO_PLAYBOOK_TEXT,
+    useCaseText: renderUseCase(facts),
+    assetsText: renderAssets(assets, jobs),
+    sourcesText: renderSources(sources),
+    userText: renderUserFacts({ context, jobs, canWrite: access !== 'read', focusJob }),
   });
 
   try {

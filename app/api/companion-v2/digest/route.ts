@@ -21,11 +21,9 @@ import {
   DIGEST_TOOL,
   buildDigestInput,
   toPeriod,
-  toStateCounts,
   validateDigest,
   type DigestPayload,
   type RawDigestInput,
-  type StateCountRow,
 } from '@/lib/companion-v2/digest';
 
 export const maxDuration = 300;
@@ -69,7 +67,7 @@ export async function POST(req: Request) {
     console.error('[digest] permission check failed:', allowedError);
     return json(500, { error: 'failed', message: RETRY });
   }
-  if (allowed !== true) return json(403, { error: 'Only contributors to this playbook can generate its digest.' });
+  if (allowed !== true) return json(403, { error: 'Only curators of this use case can generate its digest.' });
 
   const { data: runId, error: claimError } = await supabase.rpc('claim_digest_run', { p_playbook_id: playbookId });
   if (claimError) {
@@ -85,12 +83,11 @@ export async function POST(req: Request) {
 
   let saved = false;
   try {
-    const [inputRes, statesRes, jobsRes] = await Promise.all([
+    const [inputRes, jobsRes] = await Promise.all([
       supabase.rpc('contributor_digest_input', { p_playbook_id: playbookId, p_days: period }),
-      supabase.rpc('contributor_job_state_counts', { p_playbook_id: playbookId }),
       supabase.from('playbook_jobs').select('job_code, name, position').eq('playbook_id', playbookId),
     ]);
-    const failed = [inputRes, statesRes, jobsRes].find((r) => r.error);
+    const failed = [inputRes, jobsRes].find((r) => r.error);
     if (failed || !inputRes.data) {
       console.error('[digest] load failed:', failed?.error ?? 'no input');
       return json(500, { error: 'failed', message: RETRY });
@@ -99,9 +96,8 @@ export async function POST(req: Request) {
     const jobs = ((jobsRes.data ?? []) as { job_code: string; name: string; position: number | null }[]).sort(
       (a, b) => (a.position ?? 1e9) - (b.position ?? 1e9) || a.job_code.localeCompare(b.job_code, 'en', { numeric: true })
     );
-    const states = toStateCounts((statesRes.data ?? []) as StateCountRow[]);
-    const input = buildDigestInput(inputRes.data as RawDigestInput, jobs, states, period);
-    const ctx = { jobCodes: new Set(jobs.map((j) => j.job_code)), states, period, basis: input.basis };
+    const input = buildDigestInput(inputRes.data as RawDigestInput, jobs, period);
+    const ctx = { jobCodes: new Set(jobs.map((j) => j.job_code)), period, basis: input.basis };
 
     let payload: DigestPayload;
     if (input.basis.messages_used === 0 && input.basis.gaps_used === 0) {

@@ -111,20 +111,6 @@ export function opLabel(op: PatchOp, s: Snapshot): string {
       return `Remove step ${op.index + 1}: ${s.playbook.sequence.phases?.[op.index]?.name ?? ''}`;
     case 'rules.set':
       return 'Hard rules';
-    case 'source.replace_section':
-      return `Playbook → detailed guidance: rewrite "${op.heading.replace(/^#+\s*/, '')}"`;
-    case 'source.append_to_section':
-      return `Playbook → detailed guidance: add to "${op.heading.replace(/^#+\s*/, '')}"`;
-    case 'source.add_section':
-      return `Playbook → detailed guidance: new section "${op.heading.replace(/^#+\s*/, '')}"`;
-    case 'source.replace':
-      return 'Playbook → detailed guidance: change wording';
-    case 'source.insert_after':
-      return 'Playbook → detailed guidance: add text';
-    case 'source.append':
-      return 'Playbook → detailed guidance: add at the end';
-    case 'source.set':
-      return 'Playbook → detailed guidance';
   }
 }
 
@@ -158,15 +144,11 @@ export function opTarget(op: PatchOp, s: Snapshot): unknown {
       return (s.playbook.sequence.phases ?? []).map((p) => `${p.name} (${p.when})`);
     case 'rules.set':
       return s.playbook.sequence.rules ?? [];
-    default:
-      return s.playbook.source_doc;
   }
 }
 
 /** Which part of an op a contributor may edit in the diff screen. */
 export function editableKey(op: PatchOp): 'value' | 'item' | 'text' | 'replace' | null {
-  // The whole document is edited in its own editor, not in the diff card.
-  if (op.op === 'source.set') return null;
   if ('value' in op && op.op !== 'job.add') return 'value';
   if ('item' in op) return 'item';
   if ('replace' in op) return 'replace';

@@ -1,6 +1,22 @@
 # Cube: use cases as the primary entity (plan)
 
-Status: agreed 2026-11-23, not started. Branch `cube-2`, development Supabase project only.
+Status: agreed 2026-11-23. Stage 1 built (migration 0041); stages 2-7 built (migration 0042), see "As built" below. Branch `cube-2`, development Supabase project only.
+
+## As built (2026-11-23)
+
+Where the build differs from the stages below, this section is what's true.
+
+- **Access (decision 10), simpler than planned.** The rule lives in the database: `cube_use_case_access()` (needs an approved account and a confirmed email) and `cube_my_use_cases()`, which `lib/use-case-access.ts` calls with the person's own session. Use cases, journeys, notes and documents are then read with the service-role client. For everything the Companion already reached with the person's own session (playbooks, jobs, assets and asset files, conversations, saving the playbook, the Digest), migration 0042 instead redefines the database's access functions: `cube_use_case_access()` / `cube_can()` read the allowlist, and `is_playbook_member()` / `is_playbook_contributor()` now mean read / curate on the playbook's use case. So most of stage 2's routes weren't needed: the existing browser calls stay, and the row rules follow the allowlist. One new function, `my_companion_conversations()`, feeds the sidebar (use cases can't be read from the browser).
+- **Conversations** belong to a person and a use case (`companion_conversations.user_id`, `use_case_id`); existing ones were moved. Each is a reader's or a curator's chat (`kind`), and each chat lists and resumes only its own kind. People can always delete their own conversations; reading or adding messages needs read access. Curators browse them with `use_case_conversations()` / `use_case_conversation()`.
+- **People are stored by user id, never by email or name** (decided 2026-11-23): notes (`author_id`), documents (`added_by`), unanswered questions (`asked_by`) and the connector's usage log (`user_id`). Email stays only on the allowlist, which grants access before someone has an account. `cube_people` is dropped. Names are looked up when shown (`cube_person_names()`: the account's name, else its email), and only curators (and admins, for documents) see them: readers see "team note" and document titles, and `by_me` in the connector. Deleting an account removes its questions and usage-log rows; its notes and documents stay, with no author. A question logged from a web conversation goes with that conversation. This replaces decision 8's "a note by author".
+- **The Digest stays per playbook**, so a use case without a playbook has none. A connector search belongs to a use case only when it searched that use case alone; searches across several use cases (this one included) or none are only counted, in one separate number, and never summarised. People are numbered by user id. Everything that came through Claude shares the conversation id `connector`, so the Digest counts people by conversation and person together.
+- **Web notes count toward the daily limit** (`bump_companion_usage`, reader cap), since structuring one is a model call. `CUBE_STRUCTURING_MODEL` picks the structuring model in the app and the connector (default `claude-opus-5-5`).
+- **The reader and curator prompts no longer name one playbook's specifics** (the telephony / data volume / studio figures, the PMU, "district and language"): they say how to treat any playbook's differing figures and role names.
+- **The detailed guidance**: `playbooks.source_doc` is dropped (0041 copied it into documents), and the playbook editor's guidance changes ("source.*" ops) are removed.
+- **Web notes** save through `lib/cube-notes/` (copies of the connector's structuring and metadata; the app's copy doesn't send the server-side refusal fallback, which its SDK version types differently).
+- **Documents** routes moved to `/api/documents` (admins, or write access to the use case); the use case's Documents tab and the admin page share one panel.
+- **Old playbook links** (`/companion/<playbook slug>`) redirect to the use case. `playbooks.listed` is no longer used.
+- **Tests**: 0041 and 0042 run against the real 0034-0040 migrations in a local Postgres (PGlite), with checks on the data moves, every access level, conversations, the Digest and the row rules as a signed-in user. The app and connector typecheck and lint clean. Nothing has run against the dev project or in a browser yet.
 
 ## Goal
 

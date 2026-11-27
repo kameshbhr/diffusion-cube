@@ -1,11 +1,11 @@
 import AssetsManager, { type ManagedAsset } from '@/components/companion-v2/assets/AssetsManager';
-import { getViewer, requireContributor } from '@/lib/companion-v2/server';
+import { getViewer, requireCurator } from '@/lib/companion-v2/server';
 
-// Contributor-only: add, edit and delete the playbook's assets (files and
-// links). 404 for everyone else (requireContributor).
+// Curators only: add, edit and delete the playbook's assets (files and
+// links). 404 for everyone else (requireCurator).
 export default async function AssetsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const { playbook } = await requireContributor(slug);
+  const { playbook } = await requireCurator(slug);
   const { supabase } = await getViewer();
 
   const [{ data: assetRows, error }, { data: jobRows, error: jobsError }] = await Promise.all([

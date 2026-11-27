@@ -5,18 +5,20 @@
 //
 // One turn: stream the reply from /api/chat (mode "companion-v2"), show it
 // with the <ui_action> block stripped, then store the whole turn with one
-// record_companion_turn() call (messages, context, job states in one
-// transaction). If anything fails, nothing is stored: the partial reply is
+// record_companion_turn() call (messages and context in one transaction; an
+// unanswered question is also logged for the curators). If anything fails, nothing is stored: the partial reply is
 // removed and the user's text goes back into the composer for a retry.
 //
 // Which conversation is shown: the one asked for (?c= from the sidebar) if it
 // is the user's own, otherwise the latest; a new one is created if none exist.
-// ?c=new (opening the playbook from the list) starts a new conversation.
+// ?c=new (opening the use case from the list) starts a new conversation.
+// Conversations belong to the signed-in person and one use case (row rules
+// keep them to the person's own).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { parseUiAction, sanitizeUiAction, stripUiAction } from './ui-action';
-import type { CompanionContext, JobState, UiAction } from './types';
+import type { CompanionContext, UiAction } from './types';
 
 export interface ChatMessage {
   id: string;
@@ -34,8 +36,7 @@ export interface LoadedConversation {
 }
 
 interface Options {
-  playbookId: string;
-  memberId: string;
+  useCaseId: string;
   jobCodes: string[];
   assetIds: string[];
   /** ?c= from the sidebar; null/undefined opens the latest conversation. */
@@ -55,20 +56,19 @@ export const notifyConversationsChanged = (detail: ConversationsChangedDetail = 
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent(CONVERSATIONS_CHANGED, { detail }));
 };
 
-/** requestedConversationId that starts a new conversation (?c=new, from the playbook list). */
+/** requestedConversationId that starts a new conversation (?c=new, from the use case list). */
 export const NEW_CONVERSATION = 'new';
 
 let localId = 0;
 const nextId = () => `local-${++localId}`;
 
-export function useCompanionChat({ playbookId, memberId, jobCodes, assetIds, requestedConversationId }: Options) {
+export function useCompanionChat({ useCaseId, jobCodes, assetIds, requestedConversationId }: Options) {
   const [supabase] = useState(() => createClient());
   const known = useMemo(() => ({ jobCodes: new Set(jobCodes), assetIds: new Set(assetIds) }), [jobCodes, assetIds]);
 
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [context, setContext] = useState<CompanionContext>({});
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [jobStates, setJobStates] = useState<Record<string, JobState>>({});
   // Which request the shown conversation answers ("latest" or an id); while it
   // differs from the current request, the conversation is loading.
   const requestKey = requestedConversationId || 'latest';
@@ -84,11 +84,6 @@ export function useCompanionChat({ playbookId, memberId, jobCodes, assetIds, req
   // The conversation on screen. A turn that finishes after the user switched
   // away is still stored, but no longer paints over the new conversation.
   const shownRef = useRef<string | null>(null);
-
-  const refreshJobStates = useCallback(async () => {
-    const { data } = await supabase.from('member_job_states').select('job_code, state').eq('member_id', memberId);
-    if (data) setJobStates(Object.fromEntries(data.map((s) => [s.job_code, s.state as JobState])));
-  }, [memberId, supabase]);
 
   // ---------- one turn ----------
   const runTurn = useCallback(
@@ -121,7 +116,7 @@ export function useCompanionChat({ playbookId, memberId, jobCodes, assetIds, req
           body: JSON.stringify({
             mode: 'companion-v2',
             role: 'adopter',
-            playbookId,
+            useCaseId,
             conversationId: conv.id,
             message: userText ?? undefined,
             kickoff: !userText,
@@ -166,7 +161,6 @@ export function useCompanionChat({ playbookId, memberId, jobCodes, assetIds, req
           p_assistant_text: reply,
           p_ui: raw ? ui : null,
           p_context_patch: ui.context,
-          p_job_updates: ui.jobUpdates,
         });
         if (saveError) {
           console.error('[companion] could not store the turn:', saveError);
@@ -178,8 +172,6 @@ export function useCompanionChat({ playbookId, memberId, jobCodes, assetIds, req
           setMessages((prev) => prev.map((m) => (m.id === replyId ? { ...m, content: reply, ui, pending: false } : m)));
           if (Object.keys(ui.context).length) setContext((c) => ({ ...c, ...ui.context }));
         }
-        // Cube never overrides a state the user set; reload what was stored.
-        if (ui.jobUpdates.length) await refreshJobStates();
         return true;
       } catch (err) {
         console.error('[companion] turn failed:', err);
@@ -189,7 +181,7 @@ export function useCompanionChat({ playbookId, memberId, jobCodes, assetIds, req
         setBusy(false);
       }
     },
-    [known, playbookId, refreshJobStates, supabase]
+    [known, useCaseId, supabase]
   );
 
   // ---------- load a conversation ----------
@@ -200,13 +192,13 @@ export function useCompanionChat({ playbookId, memberId, jobCodes, assetIds, req
       const pick = supabase
         .from('companion_conversations')
         .select('id, context')
-        .eq('member_id', memberId)
-        .eq('playbook_id', playbookId);
+        .eq('use_case_id', useCaseId)
+        .eq('kind', 'reader');
       let { data: conv } =
         requested && !fresh
           ? await pick.eq('id', requested).maybeSingle()
           : await pick.order('updated_at', { ascending: false }).limit(1).maybeSingle();
-      // A new conversation (the playbook was opened from the list) keeps what
+      // A new conversation (the use case was opened from the list) keeps what
       // Cube knows about the situation. If the latest one has nothing from the
       // person yet (only Cube's greeting, or empty), it is reused instead, so
       // opening and leaving doesn't pile up empty conversations.
@@ -228,8 +220,8 @@ export function useCompanionChat({ playbookId, memberId, jobCodes, assetIds, req
         ({ data: conv } = await supabase
           .from('companion_conversations')
           .select('id, context')
-          .eq('member_id', memberId)
-          .eq('playbook_id', playbookId)
+          .eq('use_case_id', useCaseId)
+          .eq('kind', 'reader')
           .order('updated_at', { ascending: false })
           .limit(1)
           .maybeSingle());
@@ -237,15 +229,13 @@ export function useCompanionChat({ playbookId, memberId, jobCodes, assetIds, req
       // A newer request superseded this one: change nothing (and create nothing).
       if (isCancelled()) return null;
       setError(null);
-      await refreshJobStates();
-      if (isCancelled()) return null;
 
       let id = conv?.id as string | undefined;
       let ctx = (conv?.context ?? {}) as CompanionContext;
       if (!id) {
         const { data: created, error } = await supabase
           .from('companion_conversations')
-          .insert({ member_id: memberId, playbook_id: playbookId, context: carryContext })
+          .insert({ use_case_id: useCaseId, kind: 'reader', context: carryContext })
           .select('id, context')
           .single();
         if (error || !created) {
@@ -286,7 +276,7 @@ export function useCompanionChat({ playbookId, memberId, jobCodes, assetIds, req
       setLoadedKey(key);
       return { id, history };
     },
-    [memberId, playbookId, refreshJobStates, supabase]
+    [useCaseId, supabase]
   );
 
   // Load on mount and whenever the requested conversation changes.
@@ -346,7 +336,6 @@ export function useCompanionChat({ playbookId, memberId, jobCodes, assetIds, req
     error,
     messages,
     context,
-    jobStates,
     conversationId,
     ready,
     send,

@@ -1,5 +1,5 @@
 -- Pilot setup for the Cube connector (connector-contract.md, "Pilot setup").
--- Run in the DEVELOPMENT project's SQL editor after migrations 0038-0041.
+-- Run in the DEVELOPMENT project's SQL editor after migrations 0038-0042.
 -- Replace the names and emails; emails must be lower-case.
 --
 -- Access (0039, 0041):
@@ -43,25 +43,16 @@ on conflict (use_case_id, email) do update set access = excluded.access;
 -- needs the allowlist):
 -- update public.use_cases set open_to_all = true where name = 'Test use case';
 
--- The use case's playbook (at most one), here a test one hidden from the
--- Companion (listed = false). To link an existing playbook instead:
+-- The use case's playbook, optional and at most one. Anyone who can read the
+-- use case sees it in the Cube app; its curators (access = 'curate', above)
+-- edit it. To link an existing playbook instead:
 -- update public.playbooks set use_case_id = (select id from public.use_cases where name = 'Test use case')
 -- where slug = '<playbook slug>';
-insert into public.playbooks (slug, title, listed, use_case_id)
-select 'connector-test', 'Connector test playbook', false, u.id
+insert into public.playbooks (slug, title, use_case_id)
+select 'connector-test', 'Connector test playbook', u.id
 from public.use_cases u
 where u.name = 'Test use case'
 on conflict (slug) do nothing;
-
--- Until the Cube app moves to the allowlist (docs/design/cube-usecase-plan.md,
--- stages 2-3), it still reads playbook contributors from playbook_members, so a
--- curator also needs this row to edit the playbook in the app. The person must
--- already have a Cube account.
-insert into public.playbook_members (user_id, playbook_id, member_role)
-select u.id, p.id, 'contributor'
-from auth.users u, public.playbooks p
-where lower(u.email) = 'curator@ekstep.org' and p.slug = 'connector-test'
-on conflict (user_id, playbook_id) do update set member_role = 'contributor';
 
 -- To change someone's access:
 -- update public.use_case_members set access = 'read'   -- or 'write', 'curate'

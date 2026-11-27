@@ -1,17 +1,14 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import GenerateButton from './GenerateButton';
-import { STATE_LABEL } from '../StateMarker';
 import { formatWhen } from '@/lib/companion-v2/conversations';
-import { DIGEST_PERIODS, FEW_USERS, type DigestPeriod, type DigestStats, type DigestView, type StateCounts } from '@/lib/companion-v2/digest';
-import { JOB_STATES } from '@/lib/companion-v2/types';
+import { CONNECTOR, DIGEST_PERIODS, FEW_USERS, type DigestPeriod, type DigestStats, type DigestView } from '@/lib/companion-v2/digest';
 
 interface Props {
   slug: string;
   playbookId: string;
   period: DigestPeriod;
   stats: DigestStats;
-  states: StateCounts;
   jobNames: Record<string, string>;
   digest: { view: DigestView; generatedAt: string } | null;
 }
@@ -24,16 +21,24 @@ const KIND_LABEL = { not_covered: 'Not covered', partly_covered: 'Partly covered
 
 // The contributor's Digest tab: numbers (SQL), then the AI-written digest for
 // the selected period. Everyone is "users"; no names, emails or ids.
-export default function DigestScreen({ slug, playbookId, period, stats, states, jobNames, digest }: Props) {
+export default function DigestScreen({ slug, playbookId, period, stats, jobNames, digest }: Props) {
   const base = `/companion/${slug}`;
   const jobName = (code: string | null) => (code ? (jobNames[code] ?? 'A job no longer in the playbook') : null);
-  // Capped so the link stays well within URL length limits.
-  const viewLink = (ids: string[]) =>
-    ids.length ? (
-      <Link href={`${base}/conversations?ids=${ids.slice(0, MAX_LINK_IDS).join(',')}`} className="text-pb-accent hover:underline">
-        {ids.length > MAX_LINK_IDS ? `View ${MAX_LINK_IDS} of ${ids.length} conversations` : 'View conversations'}
-      </Link>
-    ) : null;
+  // Capped so the link stays well within URL length limits. What came
+  // through Claude has no conversation to open: it's named instead.
+  const viewLink = (all: string[]) => {
+    const ids = all.filter((id) => id !== CONNECTOR);
+    const viaClaude = ids.length < all.length ? <span>Includes searches through Claude</span> : null;
+    if (!ids.length) return viaClaude;
+    return (
+      <>
+        <Link href={`${base}/conversations?ids=${ids.slice(0, MAX_LINK_IDS).join(',')}`} className="text-pb-accent hover:underline">
+          {ids.length > MAX_LINK_IDS ? `View ${MAX_LINK_IDS} of ${ids.length} conversations` : 'View conversations'}
+        </Link>
+        {viaClaude && <> · {viaClaude}</>}
+      </>
+    );
+  };
 
   const view = digest?.view;
   // The banner describes what the digest rests on (after deletions); with no
@@ -86,19 +91,8 @@ export default function DigestScreen({ slug, playbookId, period, stats, states, 
           content: view.stuck.length > 0 && (
             <ul className="space-y-3">
               {view.stuck.map(({ item, convIds, people }, i) => {
-                const counts = states[item.job] ?? {};
                 return (
-                  <Item
-                    key={i}
-                    meta={
-                      <Meta people={item.state_only ? null : people} link={viewLink(convIds)}>
-                        <span>
-                          Now, till date:{' '}
-                          {JOB_STATES.map((s) => `${STATE_LABEL[s]} ${counts[s] ?? 0}`).join(' · ')}
-                        </span>
-                      </Meta>
-                    }
-                  >
+                  <Item key={i} meta={<Meta people={people} link={viewLink(convIds)} />}>
                     <p className="font-medium text-pb-ink">{jobName(item.job)}</p>
                     <p className="text-pb-ink">{item.observation}</p>
                   </Item>
@@ -186,9 +180,21 @@ export default function DigestScreen({ slug, playbookId, period, stats, states, 
           )}
         </div>
       </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <PeriodStat label="Searches through Claude" value={stats.connector_searches_period ?? 0} period={period} />
+        <PeriodStat label="Searches through Claude that found nothing" value={stats.connector_found_nothing_period ?? 0} period={period} />
+        <PeriodStat label="Notes added (app and Claude)" value={stats.notes_period ?? 0} period={period} />
+        <PeriodStat
+          label="Searches through Claude not tied to one use case"
+          value={stats.connector_other_searches_period ?? 0}
+          period={period}
+        />
+      </div>
       <p className="-mt-3 text-[11px] text-pb-muted">
-        Users and conversations count only people who wrote to Cube; contributors’ own chats aren’t counted. A job counts once per
-        conversation in which Cube’s answer was about it.
+        Users and conversations count people who wrote to Cube in the app, curators included. Searches through Claude are those
+        aimed at this use case alone, by {stats.connector_people_period ?? 0} {stats.connector_people_period === 1 ? 'person' : 'people'} in
+        the last {period} days; searches across several use cases, or none, are only counted, and stay out of the summary below.
+        A job counts once per conversation in which Cube’s answer was about it.
       </p>
 
       <p className="rounded-xl bg-pb-accent-soft px-4 py-2.5 text-sm text-pb-ink">
@@ -240,6 +246,18 @@ function Stat({ label, total, recent, period }: { label: string; total: number; 
         <span className="text-xs text-pb-muted">
           {recent} in the last {period} days
         </span>
+      </p>
+    </div>
+  );
+}
+
+function PeriodStat({ label, value, period }: { label: string; value: number; period: number }) {
+  return (
+    <div className="rounded-xl border border-pb-line bg-pb-surface px-4 py-3">
+      <p className="text-xs text-pb-muted">{label}</p>
+      <p className="mt-0.5 flex items-baseline gap-2">
+        <span className="text-2xl font-semibold text-pb-ink">{value}</span>
+        <span className="text-xs text-pb-muted">in the last {period} days</span>
       </p>
     </div>
   );

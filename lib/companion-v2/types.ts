@@ -1,5 +1,5 @@
 // Shapes of the Cube 2.0 playbook data as stored in Supabase (migrations
-// 0034-0036) and produced by lib/companion-v2/playbook-json.mjs.
+// 0034-0036, 0042) and produced by lib/companion-v2/playbook-json.mjs.
 
 export interface OverviewEntry {
   label: string;
@@ -66,7 +66,6 @@ export interface PlaybookRow {
   overview: PlaybookOverview;
   roles: PlaybookRole[];
   sequence: PlaybookSequence;
-  source_doc: string;
   updated_at: string;
 }
 
@@ -112,16 +111,6 @@ export interface AssetRow {
   job_codes: string[];
 }
 
-export type JobState = 'discussed' | 'in_progress' | 'done' | 'skipped';
-export const JOB_STATES: readonly JobState[] = ['discussed', 'in_progress', 'done', 'skipped'];
-
-export interface JobStateRow {
-  job_code: string;
-  state: JobState;
-  note: string;
-  set_by: 'cube' | 'user';
-}
-
 /** The only context keys stored (mirrors companion_context_keys() in 0036). */
 export const CONTEXT_KEYS = ['stage', 'location', 'done', 'role_note'] as const;
 export type ContextKey = (typeof CONTEXT_KEYS)[number];
@@ -150,18 +139,19 @@ export interface UiAction {
   openJob: string | null;
   showAssets: string[];
   context: CompanionContext;
-  jobUpdates: { job: string; state: JobState; note: string }[];
   /** Up to three follow-up questions, shown as chips under the latest reply. */
   suggestions: string[];
   /** Set only when the reply says the playbook doesn't (fully) cover an adoption question. Absent on older messages. */
   gap?: UiGap | null;
+  /** A one-line note Cube offers to save to the Cube for the team (writers only). Absent on older messages. */
+  noteOffer?: string | null;
 }
 
 /** What the client sends to /api/chat for mode "companion-v2". */
 export interface CompanionV2Request {
   mode: 'companion-v2';
   role: 'adopter' | 'contributor';
-  playbookId: string;
+  useCaseId: string;
   conversationId?: string;
   /** The new user message; the server reads the history from the database. */
   message?: string;

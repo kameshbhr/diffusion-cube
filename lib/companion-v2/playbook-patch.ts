@@ -86,9 +86,8 @@ export function stripPatchBlock(text: string): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Every op Cube may propose. Removing a job or a step, and replacing the whole
- * source document, are left to the forms and the editor, where the
- * contributor does them on purpose.
+ * Every op Cube may propose. Removing a job or a step is left to the forms,
+ * where the curator does it on purpose.
  */
 export const MODEL_OPS: ReadonlySet<string> = new Set([
   'job.set',
@@ -104,12 +103,6 @@ export const MODEL_OPS: ReadonlySet<string> = new Set([
   'phase.set',
   'phase.add',
   'rules.set',
-  'source.replace_section',
-  'source.append_to_section',
-  'source.add_section',
-  'source.replace',
-  'source.insert_after',
-  'source.append',
 ]);
 
 const LIST_FIELDS = ['how_summary', 'gaps', 'tasks'];
@@ -127,7 +120,7 @@ export function modelOpProblem(op: unknown, base: Snapshot): string | null {
   if (typeof name !== 'string') return 'This change has no type.';
   if (name === 'job.remove') return 'Removing a job is done on the Playbook screen (open the job, then Edit).';
   if (name === 'phase.remove') return 'Removing a step is done on the Playbook screen (Sequence tab).';
-  if (name === 'source.set') return 'Cube doesn’t replace all of the detailed guidance at once; ask it to change one section at a time.';
+  if (name.startsWith('source.')) return 'The detailed guidance is a document of the use case now; Cube changes only the playbook.';
   if (!MODEL_OPS.has(name)) return `Unknown change "${name}".`;
   // A whole-list job.set may only clear or reorder; items change one at a time.
   if (name === 'job.set' && typeof o.field === 'string' && LIST_FIELDS.includes(o.field) && Array.isArray(o.value) && o.value.length) {
@@ -183,7 +176,6 @@ export function sanitizePatch(raw: unknown, base: Snapshot): ProposedPatch | nul
 
 /** What an op changes, as a key; two ops with the same key touch the same thing. */
 export function opTargetKey(op: PatchOp): string {
-  const o = op as unknown as Record<string, unknown>;
   switch (op.op) {
     case 'job.set':
     case 'job.append':
@@ -209,13 +201,8 @@ export function opTargetKey(op: PatchOp): string {
       return 'phases';
     case 'rules.set':
       return 'rules';
-    case 'source.replace_section':
-    case 'source.append_to_section':
-      return `source:${String(o.heading ?? '').trim()}`;
-    case 'source.add_section':
-      return `source:${String(o.heading ?? '').trim()}`;
     default:
-      return `source:${op.op}:${String(o.find ?? '')}`;
+      return 'other';
   }
 }
 

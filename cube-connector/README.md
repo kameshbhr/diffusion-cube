@@ -11,7 +11,7 @@ It started from [`mcp-use/mcp-oauth-supabase-template`](https://github.com/mcp-u
 | OAuth 2.1 server (`/authorize`, `/token`, `/register`, discovery) | Supabase Auth on the Cube's project (Authentication → OAuth Server) |
 | Sign-in and approval | The Cube app: its usual `/login`, then `app/oauth/consent/page.tsx` |
 | MCP endpoint `/mcp`, protected-resource metadata, token check | this server (`src/server.ts`; mcp-use's Supabase provider verifies tokens against the project JWKS) |
-| Tables (`use_cases`, `journeys`, `use_case_members`, `cube_people`, `cube_notes`, `cube_note_journeys`, `cube_questions`) and SQL functions | `supabase/migrations/0038_cube_connector.sql` |
+| Tables (`use_cases`, `journeys`, `use_case_members`, `cube_notes`, `cube_note_journeys`, `cube_questions`) and SQL functions | `supabase/migrations/0038_cube_connector.sql`, changed by 0039-0042 |
 | Raw layer: documents (`raw_sources`, `raw_source_journeys`), searchable passages (`raw_source_passages`), the allowlist's `access` and `open_to_all`, use case and journey metadata, `cube_search_passages` | `supabase/migrations/0039_cube_raw_layer.sql` |
 | Embeddings (gte-small, 384 dimensions, no API key) | the `embed` Edge Function (`supabase/functions/embed`), called by `src/embeddings.ts` |
 | Document upload | the Cube app's admin page, **Documents** (`app/admin/documents`) |
@@ -20,20 +20,21 @@ It started from [`mcp-use/mcp-oauth-supabase-template`](https://github.com/mcp-u
 The flow: Claude starts sign-in → Supabase sends the browser to the Cube app's `/oauth/consent?authorization_id=…` → `proxy.ts` sends a signed-out visitor to `/login` and back (query kept) → the person approves → Supabase returns them to Claude with a token for `/mcp`.
 
 - **Who can sign in:** a Cube account with a **verified** email in an allowed domain (`CUBE_ALLOWED_DOMAINS`, default `ekstep.org`). Cube signup verifies the email with a 6-digit code. The approval page shows this rule. Every tool call enforces it, looking the user up with the service role (cached 5 minutes), because a valid token alone isn't enough: any Cube session verifies.
-- **Identity:** the author is the account's email; the name is the account's own name (`user_metadata.name` from signup), for display only. No tool accepts an author.
+- **Identity:** the author is the signed-in account, stored by its user id only (migration 0042). The email is used to find the person's access on the allowlist and is never stored. No tool accepts an author.
+- **Names:** only the curators of a use case see names: `author_name` on its notes, `asked_by_name` on its open questions, and team activity. Everyone else gets `by_me` / `asked_by_me` and no names. A name is the account's own name (`user_metadata.name` from signup), else its email, looked up when shown (`cube_person_names`).
 - **Use cases and journeys:** every note and document belongs to one use case and links to any number of that use case's journeys (one team's lived experience each, e.g. "Bihar DC, 2026"). Membership isn't tied to a journey: a person who can write to a use case can write about any of its journeys, or a general note. Use cases, journeys, the allowlist and `open_to_all` are set with SQL for the pilot (`seed-example.sql`).
 - **Access (per use case):** `CUBE_ALLOWED_DOMAINS` only decides who can use the connector at all. A person can **read** a use case when they're on its allowlist (`use_case_members`, any `access`) or it is `open_to_all`, and **write** to it when they're on the allowlist with `access` `write` or `curate`. Without access, tools answer "You don't have access to this use case. Please contact the admin."
 - **Curators:** a use case's curators are the people with `access = 'curate'` on it (migration 0041; they were playbook contributors before). Curate includes write, and in the Cube app adds editing the use case's one playbook and its assets. `is_curator` in `cube_my_journeys` says so. `cube_curated_playbooks` and `cube_use_case_curators` read it.
 - **Permissions:** a person reads all notes, documents and questions in the use cases they can read, across every journey, and adds notes only as themselves in use cases they can write to. No tool edits or deletes, and nothing touches the playbook. The database enforces the rest: saving checks write access, a note's origin fields can't change, and a journey link must be in the note's or document's use case.
 - **Approval page:** shows who is signed in and where approval sends them. If that isn't `claude.ai`/`claude.com` (or localhost for testing), it warns, since dynamic registration lets anyone register an app named "Claude".
 - **Database:** the server uses the service-role key, which stays on the server. The tables have RLS on with no policies, and `anon`/`authenticated` have no grants (tables or functions), so Cube app users can't reach them with the anon key.
-- **People:** a `cube_people` row is added on a person's first tool call after connecting. (Sign-in happens in the Cube app, which can't write these tables.) Team activity lists a use case's members and curators whether or not they've connected.
+- **Deleted accounts:** their unanswered questions and usage-log rows go with them; their notes stay, with no author.
 
 ## Saving a note (`save_note`)
 
 `saveNote` in `src/save-note.ts` is the one shared save function. `cube_add_note` calls it with channel `claude`; a future channel (WhatsApp, email, web form, meeting import) calls it with its own channel and `external_id`.
 
-1. `cube_save_note_raw` (SQL, one transaction) checks the author belongs to the use case and every journey is in it, then inserts the raw note as `unstructured` with the journey links Claude passed. Saving the same `(channel, external_id)` again returns the existing note.
+1. `cube_save_note_raw` (SQL, one transaction) checks the author can write to the use case and every journey is in it, then inserts the raw note as `unstructured` with the journey links Claude passed. Saving the same `(channel, external_id)` again returns the existing note.
 2. The server asks Claude to structure it, with the prompt from the contract's appendix (`src/structure.ts`), a 20-second timeout and no retries. The reply is read leniently (first `{...}` block). If no journey was named and the use case has several, the same call is given the journey names and asked which one the note clearly says it's about, or none; only an exact match to a listed name is linked, otherwise the note stays general.
 3. On success the fields are written and the note becomes `new`. On any failure (no key, error, timeout, refusal, unreadable reply) it stays `unstructured`, and the tool says structuring is pending. Nothing is lost.
 4. `npm run restructure` re-runs structuring for every `unstructured` note. `npm run restructure -- --ids a,b` or `-- --all` re-runs chosen notes, e.g. after the prompt changes. Re-structuring a note the curator already reviewed keeps its status, and a note that still has no journey gets another try at inferring one. It never changes metadata.
@@ -47,18 +48,18 @@ Alongside steps 2–3, for a new note:
 
 | Tool | Inputs | Notes |
 |---|---|---|
-| `cube_my_journeys` | none | The use cases the caller can read, each with `access` (`read` or `write`), its metadata (`objective`, `problem`, `users`, `sector`), `is_curator` (information only), its `playbooks` (id, title, `is_curator`) and all its journeys (id, name, organisation, geography, scale_achieved, impact_achieved, period, status). |
+| `cube_my_journeys` | none | The use cases the caller can read, each with `access` (`read`, `write` or `curate`), its metadata (`objective`, `problem`, `users`, `sector`), `is_curator` (true with curate), its `playbooks` (id, title, `is_curator`) and all its journeys (id, name, organisation, geography, scale_achieved, impact_achieved, period, status). |
 | `cube_add_note` | `raw_text` (required); `journey_ids`, `use_case_id`, `source` (`conversation` default, `nudge`, `document`), `source_ref`, `occurred_at` | Needs write access. With `journey_ids`: linked as given (all in one use case). Without: the use case is `use_case_id` or the only one the caller can write to (with several, the error lists them so Claude asks); if it has one journey the note goes to it, if several the server infers one from the text or keeps the note general. Returns the note and `structuring_pending`. |
-| `cube_search_notes` | `query` (required); `use_case_id`, `journey_id`, `note_type`, `outcome`, `status`, `since`, `until`, `author_email`, `limit` (10, max 30) | Searches `raw_source_passages` (notes and document passages) in the caller's readable use cases with `cube_search_passages`: reciprocal-rank fusion of meaning (gte-small vectors) and full text (words OR-ed). If the query can't be embedded, full text only. Each result has `kind`: a `note` has the note fields below; a `document` has `text, source_id, title, chunk_index, journeys`. `journey_id` keeps notes and documents linked to it; `note_type`, `outcome`, `status`, `author_email` leave documents out. |
+| `cube_search_notes` | `query` (required); `use_case_id`, `journey_id`, `note_type`, `outcome`, `status`, `since`, `until`, `mine`, `limit` (10, max 30) | Searches `raw_source_passages` (notes and document passages) in the caller's readable use cases with `cube_search_passages`: reciprocal-rank fusion of meaning (gte-small vectors) and full text (words OR-ed). If the query can't be embedded, full text only. Each result has `kind`: a `note` has the note fields below; a `document` has `text, source_id, title, chunk_index, journeys`. `journey_id` keeps notes and documents linked to it; `note_type`, `outcome`, `status`, `mine` (the caller's own notes) leave documents out. |
 | `cube_read_source` | `source_id`, `from_chunk`, `to_chunk` | Up to 10 consecutive passages of a document, in order, plus `total_passages`. Needs read access. |
-| `cube_recent_notes` | `since` (required); `until`, `use_case_id`, `journey_id`, `author` (`me` or email), `limit` (50, max 200) | Newest first. |
+| `cube_recent_notes` | `since` (required); `until`, `use_case_id`, `journey_id`, `mine`, `limit` (50, max 200) | Newest first. |
 | `cube_log_question` | `question`; `use_case_id` (optional if the caller has one use case) | Asker and time come from the server. |
-| `cube_open_questions` | `use_case_id`, `since` | Unresolved only, newest first; all the caller's use cases by default. |
-| `cube_team_activity` | `since`; `use_case_id` (optional if one) | One row per member or curator of one of its playbooks: name, email, the journeys they've written about, notes in the period, last note date. Includes people with zero notes. |
+| `cube_open_questions` | `use_case_id`, `since` | Unresolved only, newest first, from the app and Claude; all the caller's use cases by default. Each has `asked_by_me`; curators also get `asked_by_name`. |
+| `cube_team_activity` | `since`; `use_case_id` (optional if the caller curates one) | Curators only. One row per person on the use case's allowlist: name, email, access, the journeys they've written about, notes in the period, last note date. Includes people with zero notes. |
 
 Dates accept `2026-11-13` (start of that day in `CUBE_TIME_ZONE`, default Asia/Kolkata), an ISO date-time with a zone, `today`, `yesterday` or `7 days ago`. `until` is exclusive.
 
-Every note returned has `id, title, raw_text`, the structured fields that are set, `note_type, outcome, topics, status, channel, source, source_ref, author_name, author_email, created_at, occurred_at, use_case_id, use_case_name` and `journeys` (id and name). `title` is null while a note is `unstructured`.
+Every note returned has `id, title, raw_text`, the structured fields that are set, `note_type, outcome, topics, status, channel, source, source_ref, by_me, created_at, occurred_at, use_case_id, use_case_name` and `journeys` (id and name), plus `author_name` for a curator of the note's use case. `title` is null while a note is `unstructured`.
 
 Phase 2 tools (`cube_search_playbook`, `cube_open_conflicts`) are not built.
 
@@ -66,7 +67,7 @@ Phase 2 tools (`cube_search_playbook`, `cube_open_conflicts`) are not built.
 
 Every tool call, refused ones included, adds a row to `cube_tool_calls` (migration `0040`, written by `src/usage.ts` from `withCaller` in `src/tools.ts`), for a usage dashboard:
 
-- `called_at`, `email` (for a refused sign-in, the token's email, or `user:<id>`), `tool`, `duration_ms`
+- `called_at`, `user_id` (the signed-in account; never an email), `tool`, `duration_ms`
 - `use_case_ids`: the use case given or saved to, else every use case the caller could read at the time
 - `query`: the search text (`cube_search_notes`) or the unanswered question (`cube_log_question`). Note text is never copied; it's in `cube_notes`.
 - `params`: the other inputs (filters, `source_id` and chunk range, …)
@@ -77,7 +78,7 @@ Search text is people's own words, so it's blanked after 90 days by `cube_purge_
 Example: searches per person per week, and how many found nothing.
 
 ```sql
-select email, date_trunc('week', called_at) as week, count(*) as searches,
+select user_id, date_trunc('week', called_at) as week, count(*) as searches,
        count(*) filter (where result_count = 0) as found_nothing
 from cube_tool_calls
 where tool = 'cube_search_notes' and ok
@@ -88,7 +89,7 @@ group by 1, 2 order by 2 desc, 3 desc;
 
 Use a **development** Supabase project, never production.
 
-1. **Apply the migrations** `supabase/migrations/0038_cube_connector.sql`, `0039_cube_raw_layer.sql` and `0040_cube_tool_calls.sql`, in that order. 0038 drops and recreates version 1's tables (no notes were saved with them) and adds a nullable `use_case_id` to `playbooks`. Then seed a use case, its journeys and allowlist, and a playbook with its curator: edit and run `seed-example.sql`. Deploy the embed function once per project: `npx supabase functions deploy embed --project-ref <ref>` (keep JWT verification on).
+1. **Apply the migrations** `supabase/migrations/0038_cube_connector.sql` to `0042_cube_use_case_app.sql`, in order. 0038 drops and recreates version 1's tables (no notes were saved with them) and adds a nullable `use_case_id` to `playbooks`. Then seed a use case, its journeys and allowlist, and a playbook with its curator: edit and run `seed-example.sql`. Deploy the embed function once per project: `npx supabase functions deploy embed --project-ref <ref>` (keep JWT verification on).
 2. **OAuth server:** Authentication → OAuth Server → enable it, turn on **Allow dynamic OAuth apps** (Claude registers itself), and set the authorization path to **`/oauth/consent`**. Supabase sends people to Site URL + that path, which is the Cube app's approval page.
 3. **Cube app env:** optionally `NEXT_PUBLIC_CUBE_ALLOWED_DOMAINS` (default `ekstep.org`; same value as the connector's `CUBE_ALLOWED_DOMAINS`). It's read at build time.
 4. **Connector env:** `cp .env.example .env` and fill in the project ref, the service-role key and `ANTHROPIC_API_KEY`. `CUBE_STRUCTURING_MODEL` defaults to `claude-opus-5-5`.

@@ -1,15 +1,18 @@
-// Owns / Tracks for a user's project role, derived from a job's owners and
-// tracked_by (spec section 2.3). A job appears for a role when the role is in
-// either list.
+// Helpers for showing jobs. There are no per-person roles: every job shows
+// who owns and who tracks it, and people filter by owner.
 
-import type { JobBody, PlaybookPhase } from './types';
+import type { JobRow, PlaybookPhase } from './types';
 
-export type RoleTag = 'Owns' | 'Tracks';
+/** Jobs in sequence order, then by code. */
+export function sortJobs<T extends { position: number | null; job_code: string }>(jobs: T[]): T[] {
+  return [...jobs].sort(
+    (a, b) => (a.position ?? 1e9) - (b.position ?? 1e9) || a.job_code.localeCompare(b.job_code, 'en', { numeric: true })
+  );
+}
 
-export function tagFor(body: JobBody, projectRole: string): RoleTag | null {
-  if ((body.owners ?? []).includes(projectRole)) return 'Owns';
-  if ((body.tracked_by ?? []).includes(projectRole)) return 'Tracks';
-  return null;
+/** Every owner named across the jobs, sorted, for the Jobs filter. */
+export function allOwners(jobs: Pick<JobRow, 'body'>[]): string[] {
+  return [...new Set(jobs.flatMap((j) => j.body.owners ?? []))].sort((a, b) => a.localeCompare(b));
 }
 
 /** The phase each job first appears in, keyed by job code. */

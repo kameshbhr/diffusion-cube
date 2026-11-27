@@ -1,10 +1,10 @@
 import { createHash } from 'node:crypto';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isAdmin } from '@/lib/roles';
 import { chunkText } from '@/lib/chunk-text';
+import { canAddDocuments, canSeeAuthors, documentCaller } from '@/lib/document-access';
 
-// Cube raw layer (migration 0039): an admin uploads a document to a use case.
+// Cube raw layer (migration 0039): a Cube admin, or anyone with write access
+// to the use case, uploads a document to it (lib/document-access.ts).
 // The browser extracts the text (lib/extract-text.ts) and sends it here; the
 // document and its passages are saved at once without embeddings, so keyword
 // search works straight away. Embeddings come from ./embed, called
@@ -14,20 +14,14 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_TEXT_CHARS = 3_000_000;
 const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 
-async function adminEmail(): Promise<string | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user?.email || !(await isAdmin(supabase, user.email))) return null;
-  return user.email.toLowerCase();
-}
-
-// The page's data: use cases with their journeys, every document with its
-// passage counts, and how many passages (documents and notes) wait for an
-// embedding.
+// The page's data: the use cases the caller may add documents to, with their
+// journeys and documents (passage counts), and how many passages (documents
+// and notes, everywhere) wait for an embedding. Who added a document is
+// stored as a user id; its name is shown only to admins and the use case's
+// curators (migration 0042).
 export async function GET() {
-  if (!(await adminEmail())) return Response.json({ error: 'Not authorized.' }, { status: 403 });
+  const caller = await documentCaller();
+  if (!caller) return Response.json({ error: 'Not authorized.' }, { status: 403 });
   const admin = createAdminClient();
   const [useCases, journeys, documents, pending] = await Promise.all([
     admin.from('use_cases').select('id, name').order('name'),
@@ -37,13 +31,27 @@ export async function GET() {
   ]);
   const failed = useCases.error ?? journeys.error ?? documents.error ?? pending.error;
   if (failed) {
-    console.error('[admin/documents] load failed:', failed.message);
+    console.error('[documents] load failed:', failed.message);
     return Response.json({ error: 'Could not load documents.' }, { status: 500 });
   }
+  const mine = (id: string) => canAddDocuments(caller, id);
+  type DocRow = { use_case_id: string; added_by: string | null } & Record<string, unknown>;
+  const docs = ((documents.data ?? []) as DocRow[]).filter((d) => mine(d.use_case_id));
+  const shown = docs.filter((d) => canSeeAuthors(caller, d.use_case_id) && d.added_by).map((d) => d.added_by as string);
+  const names = new Map<string, string>();
+  if (shown.length) {
+    const { data: people, error: namesError } = await admin.rpc('cube_person_names', { p_user_ids: [...new Set(shown)] });
+    if (namesError) console.error('[documents] names failed:', namesError.message);
+    for (const p of (people ?? []) as { user_id: string; name: string }[]) names.set(p.user_id, p.name);
+  }
   return Response.json({
-    useCases: useCases.data ?? [],
-    journeys: journeys.data ?? [],
-    documents: documents.data ?? [],
+    useCases: (useCases.data ?? []).filter((u) => mine(u.id as string)),
+    journeys: (journeys.data ?? []).filter((j) => mine(j.use_case_id as string)),
+    documents: docs.map(({ added_by, ...d }) => ({
+      ...d,
+      added_by_name: canSeeAuthors(caller, d.use_case_id as string) && added_by ? (names.get(added_by) ?? null) : null,
+      added_by_me: added_by === caller.userId,
+    })),
     pendingPassages: pending.count ?? 0,
   });
 }
@@ -52,8 +60,8 @@ export async function GET() {
 // Answers { status: 'saved', source_id, passages } | { status: 'duplicate', title }
 // | { status: 'skipped', reason }.
 export async function POST(req: Request) {
-  const email = await adminEmail();
-  if (!email) return Response.json({ error: 'Not authorized.' }, { status: 403 });
+  const caller = await documentCaller();
+  if (!caller) return Response.json({ error: 'Not authorized.' }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));
   const { use_case_id, journey_ids, title, text } = body ?? {};
@@ -67,6 +75,9 @@ export async function POST(req: Request) {
     typeof text !== 'string'
   ) {
     return Response.json({ error: 'Invalid request.' }, { status: 400 });
+  }
+  if (!canAddDocuments(caller, use_case_id)) {
+    return Response.json({ error: "You don't have access to add documents to this use case." }, { status: 403 });
   }
   if (text.length > MAX_TEXT_CHARS) return Response.json({ status: 'skipped', reason: 'The text is too long.' });
 
@@ -90,7 +101,7 @@ export async function POST(req: Request) {
     .eq('content_hash', contentHash)
     .maybeSingle();
   if (dupError) {
-    console.error('[admin/documents] duplicate check failed:', dupError.message);
+    console.error('[documents] duplicate check failed:', dupError.message);
     return Response.json({ error: 'Could not save the document.' }, { status: 500 });
   }
   if (existing) return Response.json({ status: 'duplicate', title: existing.title });
@@ -102,14 +113,14 @@ export async function POST(req: Request) {
       title: title.trim().slice(0, 300),
       content_hash: contentHash,
       full_text: fullText,
-      added_by_email: email,
+      added_by: caller.userId,
     })
     .select('id')
     .single();
   if (insertError) {
     // Two uploads of the same file at once: the unique (use_case_id, content_hash) catches the second.
     if (insertError.code === '23505') return Response.json({ status: 'duplicate', title: title.trim() });
-    console.error('[admin/documents] insert failed:', insertError.message);
+    console.error('[documents] insert failed:', insertError.message);
     return Response.json({ error: 'Could not save the document.' }, { status: 500 });
   }
 
@@ -125,7 +136,7 @@ export async function POST(req: Request) {
         passages.map((passage, i) => ({ source_id: source.id, chunk_index: i, text: passage }))
       );
   if (links.error || chunks.error) {
-    console.error('[admin/documents] passages failed:', (links.error ?? chunks.error)?.message);
+    console.error('[documents] passages failed:', (links.error ?? chunks.error)?.message);
     await admin.from('raw_sources').delete().eq('id', source.id);
     const reason = links.error ? 'A chosen journey is not in this use case.' : 'Could not save its passages.';
     return Response.json({ error: `Could not save the document. ${reason}` }, { status: 500 });

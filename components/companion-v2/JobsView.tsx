@@ -2,57 +2,34 @@
 
 import { useMemo, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
-import StateMarker from './StateMarker';
 import AssetLink, { type AssetLinkData } from './AssetLink';
 import JobSheet from './JobSheet';
-import { phaseTitle, shortWhen, stageTitles, tagFor } from '@/lib/companion-v2/jobs';
-import type { JobRow, JobStateRow, PlaybookPhase } from '@/lib/companion-v2/types';
+import { allOwners, phaseTitle, shortWhen, stageTitles } from '@/lib/companion-v2/jobs';
+import type { JobRow, PlaybookPhase } from '@/lib/companion-v2/types';
 
 interface Props {
   slug: string;
-  memberId: string;
-  projectRole: string;
   jobs: JobRow[];
   phases: PlaybookPhase[];
   assets: AssetLinkData[];
   assetJobs: Record<string, string[]>;
-  initialStates: JobStateRow[];
 }
 
-function Owners({ owners, role }: { owners: string[]; role: string }) {
-  if (!owners.length) return <span className="italic text-pb-muted">No owner named in the playbook</span>;
-  return (
-    <>
-      {owners.map((o, i) => (
-        <span key={o}>
-          {i > 0 && ', '}
-          {o === role ? <strong className="font-semibold text-pb-ink">{o}</strong> : o}
-        </span>
-      ))}
-    </>
-  );
-}
+const ALL = '';
 
-// Adopter Jobs screen: every job for the user's role, in sequence order,
-// grouped under the step where it first appears. No framework labels.
-export default function JobsView({ slug, memberId, projectRole, jobs, phases, assets, assetJobs, initialStates }: Props) {
+// View Jobs: every job in sequence order, grouped under the step where it
+// first appears, each with who owns and who tracks it. People filter by
+// owner. No framework labels, no per-person roles or progress markers.
+export default function JobsView({ slug, jobs, phases, assets, assetJobs }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const openCode = searchParams.get('open');
+  const [owner, setOwner] = useState(ALL);
+  const owners = useMemo(() => allOwners(jobs), [jobs]);
 
-  const [onlyMine, setOnlyMine] = useState(false);
-  const [states, setStates] = useState<Record<string, JobStateRow>>(() =>
-    Object.fromEntries(initialStates.map((s) => [s.job_code, s]))
-  );
-
-  // A job appears for a role when the role owns or tracks it.
   const visible = useMemo(
-    () =>
-      jobs.filter((j) => {
-        const tag = tagFor(j.body, projectRole);
-        return onlyMine ? tag === 'Owns' : tag !== null;
-      }),
-    [jobs, onlyMine, projectRole]
+    () => (owner === ALL ? jobs : jobs.filter((j) => (j.body.owners ?? []).includes(owner))),
+    [jobs, owner]
   );
 
   const groups = useMemo(() => {
@@ -75,8 +52,6 @@ export default function JobsView({ slug, memberId, projectRole, jobs, phases, as
     return out;
   }, [visible, phases]);
 
-  const ownsCount = jobs.filter((j) => tagFor(j.body, projectRole) === 'Owns').length;
-  const trackedCount = jobs.filter((j) => tagFor(j.body, projectRole) !== null).length;
   const stepTitles = useMemo(() => stageTitles(phases), [phases]);
   const general = assets.filter((a) => !(assetJobs[a.id] ?? []).length);
   const openJob = openCode ? jobs.find((j) => j.job_code === openCode) ?? null : null;
@@ -94,27 +69,25 @@ export default function JobsView({ slug, memberId, projectRole, jobs, phases, as
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <p className="max-w-xl text-sm leading-relaxed text-pb-muted">
-          Every job in this adoption, in the order they usually happen. As the {projectRole}, you track{' '}
-          {trackedCount === jobs.length ? 'all of them' : `${trackedCount} of them`} and own {ownsCount}.
+          Every job in this adoption, in the order they usually happen, with who owns and who tracks each one.
         </p>
-        <div role="group" aria-label="Which jobs to show" className="inline-flex rounded-full border border-pb-line bg-pb-surface p-0.5 text-sm">
-          {[
-            { v: false, label: 'All jobs' },
-            { v: true, label: 'Only mine' },
-          ].map((o) => (
-            <button
-              key={o.label}
-              type="button"
-              aria-pressed={onlyMine === o.v}
-              onClick={() => setOnlyMine(o.v)}
-              className={`rounded-full px-3.5 py-1 transition ${
-                onlyMine === o.v ? 'bg-pb-accent text-white' : 'text-pb-muted hover:text-pb-ink'
-              }`}
+        {owners.length > 0 && (
+          <label className="flex items-center gap-2 text-sm text-pb-muted">
+            Owned by
+            <select
+              value={owner}
+              onChange={(e) => setOwner(e.target.value)}
+              className="rounded-lg border border-pb-line bg-pb-surface px-2 py-1 text-sm text-pb-ink"
             >
-              {o.label}
-            </button>
-          ))}
-        </div>
+              <option value={ALL}>Anyone</option>
+              {owners.map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
 
       <div className="mt-6 space-y-8">
@@ -128,8 +101,7 @@ export default function JobsView({ slug, memberId, projectRole, jobs, phases, as
             </div>
             <ul className="divide-y divide-pb-line-soft overflow-hidden rounded-xl border border-pb-line bg-pb-surface">
               {list.map((j) => {
-                const tag = tagFor(j.body, projectRole);
-                const state = states[j.job_code];
+                const jobOwners = j.body.owners ?? [];
                 return (
                   <li key={j.job_code}>
                     <button
@@ -137,28 +109,14 @@ export default function JobsView({ slug, memberId, projectRole, jobs, phases, as
                       onClick={() => setOpen(j.job_code)}
                       className="block w-full px-4 py-3 text-left transition hover:bg-pb-accent-soft/40 focus-visible:bg-pb-accent-soft/40"
                     >
-                      <span className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
-                        <span className="text-[15px] font-medium text-pb-ink">{j.name}</span>
-                        <span className="flex items-center gap-3">
-                          {state && <StateMarker state={state.state} byUser={state.set_by === 'user'} />}
-                          {tag && (
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                                tag === 'Owns' ? 'bg-pb-accent text-white' : 'bg-pb-accent-soft text-pb-accent'
-                              }`}
-                            >
-                              {tag}
-                            </span>
-                          )}
-                        </span>
-                      </span>
+                      <span className="text-[15px] font-medium text-pb-ink">{j.name}</span>
                       {j.body.when && (
                         <span className="mt-0.5 block text-[13px] leading-snug text-pb-muted">{shortWhen(j.body.when)}</span>
                       )}
                       <span className="mt-1 grid gap-0.5 text-xs leading-snug text-pb-muted sm:grid-cols-[auto_1fr] sm:gap-x-2">
                         <span className="font-medium text-pb-muted">Who owns</span>
                         <span>
-                          <Owners owners={j.body.owners ?? []} role={projectRole} />
+                          {jobOwners.length ? jobOwners.join(', ') : <span className="italic">No owner named in the playbook</span>}
                         </span>
                         <span className="font-medium text-pb-muted">Who tracks</span>
                         <span>{(j.body.tracked_by ?? []).join(', ') || 'Not stated'}</span>
@@ -198,19 +156,8 @@ export default function JobsView({ slug, memberId, projectRole, jobs, phases, as
           key={openJob.job_code}
           stepTitles={stepTitles}
           slug={slug}
-          memberId={memberId}
-          projectRole={projectRole}
           job={openJob}
           assets={assets.filter((a) => (assetJobs[a.id] ?? []).includes(openJob.job_code))}
-          state={states[openJob.job_code] ?? null}
-          onStateChange={(row) =>
-            setStates((prev) => {
-              const next = { ...prev };
-              if (row) next[openJob.job_code] = row;
-              else delete next[openJob.job_code];
-              return next;
-            })
-          }
           onClose={() => setOpen(null)}
         />
       )}

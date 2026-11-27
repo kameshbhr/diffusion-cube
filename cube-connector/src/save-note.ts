@@ -6,8 +6,8 @@
  * with its own channel and external_id, after working out the author and use
  * case on its side.
  *
- *   1-2. cube_save_note_raw (SQL, one transaction): check the author belongs
- *        to the use case and every journey is in it, then insert the raw
+ *   1-2. cube_save_note_raw (SQL, one transaction): check the author can
+ *        write to the use case and every journey is in it, then insert the raw
  *        note as 'unstructured' with its journey links.
  *   3.   Ask Claude to structure it (20-second timeout). If the note has no
  *        journey and the caller passes the use case's journeys, the same call
@@ -28,7 +28,7 @@
 import { db } from "./db.js";
 import { embedTexts, QUICK_EMBED, toPgVector } from "./embeddings.js";
 import { applyMetadataUpdates, loadMetadataContext, type MetadataContext } from "./metadata.js";
-import { loadNotes, type Note } from "./notes.js";
+import { loadNotes, type Note, type NoteViewer } from "./notes.js";
 import { structureNote, type JourneyChoice, type StructuredFields } from "./structure.js";
 
 export interface CandidateJourney extends JourneyChoice {
@@ -39,8 +39,10 @@ export type Channel = "claude" | "whatsapp" | "email" | "web" | "meeting" | "imp
 export type Source = "conversation" | "nudge" | "document";
 
 export interface SaveNoteInput {
-  authorEmail: string;
-  authorName: string | null;
+  /** The author's user id (migration 0042): the only thing stored about them. */
+  authorId: string;
+  /** How the saved note is shown back (authorship per notes.ts). */
+  viewer: NoteViewer;
   useCaseId: string;
   journeyIds: string[];
   rawText: string;
@@ -113,8 +115,7 @@ export async function structureAndApply(
 
 export async function saveNote(input: SaveNoteInput): Promise<SaveNoteResult> {
   const { data, error } = await db().rpc("cube_save_note_raw", {
-    p_author_email: input.authorEmail,
-    p_author_name: input.authorName,
+    p_author_id: input.authorId,
     p_use_case_id: input.useCaseId,
     p_journey_ids: input.journeyIds,
     p_raw_text: input.rawText,
@@ -141,7 +142,7 @@ export async function saveNote(input: SaveNoteInput): Promise<SaveNoteResult> {
     ]);
   }
 
-  const [note] = await loadNotes([row.note_id]);
+  const [note] = await loadNotes([row.note_id], input.viewer);
   if (!note) throw new Error("The note was saved but couldn't be read back.");
   return {
     note,

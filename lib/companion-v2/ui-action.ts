@@ -3,16 +3,7 @@
 // the client hook can import it. The model never writes to the database: the
 // client validates this block against the loaded playbook and persists it.
 
-import {
-  CONTEXT_KEYS,
-  GAP_KINDS,
-  JOB_STATES,
-  type CompanionContext,
-  type GapKind,
-  type JobState,
-  type UiAction,
-  type UiGap,
-} from './types';
+import { CONTEXT_KEYS, GAP_KINDS, type CompanionContext, type GapKind, type UiAction, type UiGap } from './types';
 
 const OPEN = '<ui_action';
 const BLOCK = /<ui_action>([\s\S]*?)<\/ui_action>/;
@@ -22,9 +13,9 @@ export const EMPTY_UI_ACTION: UiAction = {
   openJob: null,
   showAssets: [],
   context: {},
-  jobUpdates: [],
   suggestions: [],
   gap: null,
+  noteOffer: null,
 };
 
 /** Raw JSON of the block, or null if it is missing or not valid JSON. */
@@ -52,7 +43,7 @@ export function stripUiAction(text: string): string {
   return text.trim();
 }
 
-const NOTE_MAX = 300;
+const NOTE_OFFER_MAX = 1000;
 const CONTEXT_VALUE_MAX = 300;
 const SUGGESTION_MAX = 90;
 const GAP_QUESTION_MAX = 160;
@@ -138,15 +129,15 @@ function sanitizeGap(v: unknown, jobCodes: Set<string>): UiGap | null {
 }
 
 /**
- * Keeps only what is valid for this playbook: known job codes and asset ids,
- * the four job states, the four context keys, string values. Anything else
- * the model produced is dropped silently.
+ * Keeps only what is valid for this use case: known job codes and asset ids,
+ * the four context keys, string values. Anything else the model produced is
+ * dropped silently.
  */
 export function sanitizeUiAction(
   raw: unknown,
   known: { jobCodes: Set<string>; assetIds: Set<string> }
 ): UiAction {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ...EMPTY_UI_ACTION, context: {}, jobUpdates: [], suggestions: [], gap: null };
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ...EMPTY_UI_ACTION, context: {}, suggestions: [] };
   const r = raw as Record<string, unknown>;
 
   const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
@@ -162,23 +153,6 @@ export function sanitizeUiAction(
     for (const key of CONTEXT_KEYS) {
       const v = c[key];
       if (typeof v === 'string' && v.trim()) context[key] = v.trim().slice(0, CONTEXT_VALUE_MAX);
-    }
-  }
-
-  const jobUpdates: UiAction['jobUpdates'] = [];
-  const seen = new Set<string>();
-  if (Array.isArray(r.jobUpdates)) {
-    for (const u of r.jobUpdates) {
-      if (!u || typeof u !== 'object') continue;
-      const { job, state, note } = u as Record<string, unknown>;
-      if (typeof job !== 'string' || !known.jobCodes.has(job) || seen.has(job)) continue;
-      if (typeof state !== 'string' || !JOB_STATES.includes(state as JobState)) continue;
-      seen.add(job);
-      jobUpdates.push({
-        job,
-        state: state as JobState,
-        note: typeof note === 'string' ? note.trim().slice(0, NOTE_MAX) : '',
-      });
     }
   }
 
@@ -198,5 +172,10 @@ export function sanitizeUiAction(
 
   const gap = sanitizeGap(r.gap, known.jobCodes);
 
-  return { focusJobs, openJob, showAssets, context, jobUpdates, suggestions, gap };
+  // A note Cube offers to save for the team: the person's own know-how, so
+  // it is kept as written (only trimmed and capped). Saved only on their yes.
+  const noteOffer =
+    typeof r.noteOffer === 'string' && r.noteOffer.trim() ? cap(r.noteOffer.replace(/\s+/g, ' ').trim(), NOTE_OFFER_MAX) : null;
+
+  return { focusJobs, openJob, showAssets, context, suggestions, gap, noteOffer };
 }

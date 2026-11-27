@@ -68,7 +68,7 @@ flowchart LR
 2. **The model never writes to the DB.** Each `companion` reply ends with a `<grid_update>` JSON block (`cells`, `meta`, `pathwaysReferenced`, `flowStep`, plus `explorerAction` *or* `pathwayAction`). The client hook (`lib/adoption-conversation.ts`, parsed by `lib/grid-update.ts`) strips it, merges the grid, persists, and fires any follow-up document-generation call. `designs.meta` is re-injected every turn because the block is stripped before storage.
 3. **Whole-corpus prompt injection.** Every companion turn gets the framework + all grounding pathways (`lib/wiki-loader.ts`: static `content/wiki/pathways/` merged with `published_pathways`). No retrieval layer — fine at current corpus size, the planned evolution is RAG.
 4. **Three-deep access control.** `proxy.ts` only checks "is there a session" (with a public allow-list incl. `/explore`, `/analyse`, `/contribute`, `/api/chat`); pages render tiered access-gate messages; API routes re-check roles via `lib/roles.ts` (`general_user | adopter | pathway_contributor | admin`).
-5. **No ORM, no repository layer.** Direct `@supabase/supabase-js` calls; clients in `lib/supabase/{client,server,admin}.ts`. Schema = sequential SQL in `supabase/migrations/` (currently `0001`–`0037`; `0034`–`0037` are Cube 2.0).
+5. **No ORM, no repository layer.** Direct `@supabase/supabase-js` calls; clients in `lib/supabase/{client,server,admin}.ts`. Schema = sequential SQL in `supabase/migrations/` (currently `0001`–`0042`; `0034`–`0037` are Cube 2.0, `0038`–`0042` the Cube connector, raw layer and use-case model).
 6. **Client-side document extraction** (`lib/extract-text.ts`: pdfjs, mammoth, SheetJS, jszip for PPTX) — uploads become text before they reach the API.
 
 ### Product rules the prompts enforce
@@ -94,7 +94,7 @@ npm run lint
 
 There is **no automated test suite** — verify manually (see [`architecture/testing.md`](docs/wiki/diffusion-cube/architecture/testing.md)).
 
-Env vars: `ANTHROPIC_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (required); `GITHUB_TOKEN` / `GITHUB_REPO` / `GITHUB_BRANCH` (assemble); `SEND_EMAIL_HOOK_SECRET`, `SMTP_*`, `EMAIL_FROM_ADDRESS` (auth email); `ADMIN_EMAILS`, `NEXT_PUBLIC_SUPPORT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_JSON` / `GOOGLE_SHEET_ID` (logging), `WIKI_PATH`. Cube 2.0: `NEXT_PUBLIC_CUBE_VERSION` (`2` turns it on, build-time), `COMPANION_DAILY_MESSAGE_CAP` / `COMPANION_DAILY_CONTRIBUTOR_CAP` (daily model calls, defaults 60 / 40), `COMPANION_V2_FAIL_AFTER_CHARS` (dev-only failure injection), `COMPANION_DIGEST_MAX_TOKENS` / `COMPANION_DIGEST_FAIL` (dev-only, to test the Digest's max_tokens and failure paths).
+Env vars: `ANTHROPIC_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (required); `GITHUB_TOKEN` / `GITHUB_REPO` / `GITHUB_BRANCH` (assemble); `SEND_EMAIL_HOOK_SECRET`, `SMTP_*`, `EMAIL_FROM_ADDRESS` (auth email); `ADMIN_EMAILS`, `NEXT_PUBLIC_SUPPORT_EMAIL`, `GOOGLE_SERVICE_ACCOUNT_JSON` / `GOOGLE_SHEET_ID` (logging), `WIKI_PATH`. Cube 2.0: `NEXT_PUBLIC_CUBE_VERSION` (`2` turns it on, build-time), `COMPANION_DAILY_MESSAGE_CAP` / `COMPANION_DAILY_CONTRIBUTOR_CAP` (daily model calls, defaults 60 / 40), `COMPANION_V2_FAIL_AFTER_CHARS` (dev-only failure injection), `COMPANION_DIGEST_MAX_TOKENS` / `COMPANION_DIGEST_FAIL` (dev-only, to test the Digest's max_tokens and failure paths), `CUBE_STRUCTURING_MODEL` (the model that structures notes saved from the web chat, default `claude-opus-5-5`; the connector has its own).
 
 Deploy: Vercel via `.github/workflows/deploy.yml` on push to `main` (live path); a Docker/AWS image is also defined but not CI-wired.
 
@@ -140,6 +140,14 @@ Re-tailor any of these after big stack changes via the `update-skill-subagent` a
 ## Cube 2.0 (branch `cube-2`): read this first
 
 We are building a test version of Cube 2.0 as a **modification of this repo**, not a rewrite. Full spec: `docs/design/cube2-spec.md`. Concept note: `docs/design/`. The plan lives in `docs/design/cube2-plan.md`.
+
+> **Since 2026-11-23 the Companion is organised by use case** (`docs/design/cube-usecase-plan.md`, read its "As built" section first). Where this section disagrees, that plan wins. In short:
+> - A **use case** is the primary entity, with an optional **single playbook**. Access is the use case's allowlist (`use_case_members.access`: `read` | `write` | `curate`) or `open_to_all`; there are no playbook adopter/contributor memberships (`playbook_members` is gone). "Contributor" below now means a use case's **curators** (`curate`).
+> - Anyone who can read a use case converses about it; answers come from its playbook plus the notes and documents search finds (`cube_search_passages`), and **cite** notes and documents. Writers save notes from the chat (`noteOffer`) and add documents (Documents tab).
+> - **No per-person roles and no job markers**: the PMU role, Owns/Tracks tags, "only mine", `member_job_states` and journey capture (`jobUpdates`) are removed. Jobs show who owns and who tracks them, with a filter by owner.
+> - The playbook's **detailed guidance is now an ordinary document** of the use case (`playbooks.source_doc` dropped); curators edit only the structured playbook and assets.
+> - The **Digest** covers the app's conversations (curators' included) and what came through Claude (connector searches aimed at that use case alone, and logged questions).
+> - **People are stored by user id only** (notes, documents, questions, the connector's usage log); email stays only on the allowlist. Readers never see names (notes are cited as "team note"); curators see who wrote notes and added documents. Never store or show emails or names elsewhere.
 
 ### What changes
 - A flag (`NEXT_PUBLIC_CUBE_VERSION=2`) hides Explore, Analyse and Contribute in the nav and shows one "Companion" item. **Do not delete the Cube 1.0 routes or code.** Hide them.
